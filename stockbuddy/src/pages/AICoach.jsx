@@ -148,6 +148,7 @@ function AICoach() {
   const [showPLCalculation, setShowPLCalculation] = useState(false);
   const [showSharesCalculation, setShowSharesCalculation] = useState(false);
   const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
   const didBounceScenarioRef = useRef(false);
   const bounceInProgressRef = useRef(false);
   const bounceAltIndexRef = useRef(1);
@@ -218,10 +219,19 @@ function AICoach() {
     }
   }, [bouncePhase, currentScenario, chartScenarioIndex, chartData, chatMessages.length]);
 
-  // Auto-scroll to bottom of chat
+  // Auto-scroll to bottom of chat (only when new messages are added)
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+    if (chatMessages.length > 0 && chatContainerRef.current) {
+      // Use a small delay to ensure the DOM has updated
+      setTimeout(() => {
+        // Scroll the chat container to bottom instead of using scrollIntoView
+        const chatContainer = chatContainerRef.current;
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [chatMessages.length]); // Only trigger when message count changes, not content
 
   // Helpers for historical price lookup
   const parseDateToEpoch = (dateString) => {
@@ -1247,14 +1257,16 @@ function AICoach() {
             </h3>
 
             {/* Chat Messages */}
-            <div style={{
-              flex: 1,
-              overflowY: 'auto',
-              marginBottom: '16px',
-              padding: '8px',
-              backgroundColor: marbleWhite,
-              borderRadius: '12px'
-            }}>
+            <div 
+              ref={chatContainerRef}
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                marginBottom: '16px',
+                padding: '8px',
+                backgroundColor: marbleWhite,
+                borderRadius: '12px'
+              }}>
               {chatMessages.map((message, index) => (
                 <div key={index} style={{
                   marginBottom: '12px',
