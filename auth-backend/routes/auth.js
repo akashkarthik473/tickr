@@ -911,6 +911,47 @@ router.post('/send-goal-reminder', authenticateToken, async (req, res) => {
   }
 });
 
+// Get leaderboard
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const users = getUsers(req);
+    
+    // Convert users object to array and extract relevant data
+    const leaderboardData = Object.values(users)
+      .map(user => ({
+        userId: user.id,
+        username: user.username,
+        name: user.name,
+        xp: user.learningProgress?.xp || 0,
+        coins: user.learningProgress?.coins || 0,
+        completedLessons: user.learningProgress?.completedLessons?.length || 0,
+        totalValue: user.portfolio?.totalValue || 0,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt
+      }))
+      .filter(user => user.xp > 0) // Only include users with some XP
+      .sort((a, b) => b.xp - a.xp) // Sort by XP descending
+      .slice(0, 10) // Top 10 users
+      .map((user, index) => ({
+        ...user,
+        rank: index + 1
+      }));
+
+    res.json({
+      success: true,
+      leaderboard: leaderboardData,
+      totalUsers: Object.keys(users).length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch leaderboard'
+    });
+  }
+});
+
 // Export middleware for use in other routes
 router.authenticateToken = authenticateToken;
 

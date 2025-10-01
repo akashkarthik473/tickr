@@ -1,12 +1,12 @@
 {
-  "user_1754015246129_cqlhmlb12": {
-    "id": "user_1754015246129_cqlhmlb12",
+  "user_1757824490716_udllxxm5b": {
+    "id": "user_1757824490716_udllxxm5b",
     "email": "akashkarthik473@gmail.com",
-    "username": "test_peachy",
-    "password": "$2b$10$8qqRZnhyR48R/bsvLzqvTeLw/.tPpfcULw1dS4H94tgn/52wQo9zO",
+    "username": "dev_peachy",
+    "password": "$2b$10$VnnzlVx/gPOmXqFSkPQo2e.CSx6wmhW6GtzL2tEB0IyQQO0sB0Kca",
     "name": "Akash Karthik",
-    "createdAt": "2025-08-01T02:27:26.129Z",
-    "lastLogin": "2025-08-30T07:52:38.235Z",
+    "createdAt": "2025-09-14T04:34:50.716Z",
+    "lastLogin": "2025-09-14T04:34:50.716Z",
     "portfolio": {
       "balance": 10000,
       "positions": [],
@@ -17,8 +17,7 @@
       "coins": 35,
       "completedLessons": [
         1,
-        2,
-        3
+        2
       ],
       "completedUnitTests": [],
       "finalTestCompleted": false,
@@ -26,22 +25,16 @@
       "unitTestAttempts": {},
       "lessonAttempts": {
         "1": {
-          "attempts": 8,
+          "attempts": 2,
           "completed": true,
           "bestScore": 100,
-          "lastAttempt": "2025-08-08T02:46:56.371Z"
+          "lastAttempt": "2025-09-14T04:35:23.501Z"
         },
         "2": {
-          "attempts": 4,
+          "attempts": 2,
           "completed": true,
           "bestScore": 100,
-          "lastAttempt": "2025-08-08T02:26:02.447Z"
-        },
-        "3": {
-          "attempts": 4,
-          "completed": true,
-          "bestScore": 0,
-          "lastAttempt": "2025-08-08T02:27:36.489Z"
+          "lastAttempt": "2025-09-14T04:35:47.680Z"
         }
       },
       "lessonRewards": {
@@ -56,115 +49,13 @@
         "2": {
           "xp": 30,
           "coins": 20
-        },
-        "3": {
-          "xp": 0,
-          "coins": 0
         }
       }
     },
     "purchasedItems": [],
     "learningPreferences": {
-      "dailyGoal": 1,
+      "dailyGoal": 3,
       "notifications": true
     }
-  },
-  "user_1754028137929_dv2llmgc6": {
-    "id": "user_1754028137929_dv2llmgc6",
-    "email": "r.vudatha0101@gmail.com",
-    "username": "ritvik",
-    "password": "$2b$10$oP4bqNvS6SPfivfZLmIyh.lTs3mTJo/OkEL2wFO55C9KC4hLvkyle",
-    "name": "Ritvik Vudatha",
-    "createdAt": "2025-08-01T06:02:17.929Z",
-    "lastLogin": "2025-09-12T06:05:04.666Z",
-    "portfolio": {
-      "balance": 10000,
-      "positions": [],
-      "totalValue": 10000
-    },
-    "learningProgress": {
-      "xp": 80,
-      "coins": 50,
-      "completedLessons": [
-        1,
-        2,
-        3
-      ],
-      "completedUnitTests": [],
-      "finalTestCompleted": false,
-      "finalTestLastAttempt": null,
-      "unitTestAttempts": {},
-      "lessonAttempts": {
-        "1": {
-          "attempts": 6,
-          "completed": true,
-          "bestScore": 100,
-          "lastAttempt": "2025-09-12T05:57:42.131Z"
-        },
-        "2": {
-          "attempts": 4,
-          "completed": true,
-          "bestScore": 100,
-          "lastAttempt": "2025-09-12T05:59:07.914Z"
-        },
-        "3": {
-          "attempts": 2,
-          "completed": true,
-          "bestScore": 100,
-          "lastAttempt": "2025-09-12T06:00:54.104Z"
-        }
-      },
-      "lessonRewards": {
-        "1": true,
-        "2": true,
-        "3": true
-      },
-      "lessonEarnedRewards": {
-        "1": {
-          "xp": 25,
-          "coins": 15
-        },
-        "2": {
-          "xp": 30,
-          "coins": 20
-        },
-        "3": {
-          "xp": 25,
-          "coins": 15
-        }
-      }
-    },
-    "purchasedItems": [],
-    "picture": "https://lh3.googleusercontent.com/a/ACg8ocKfoEZYj5WmASEKhItze-6R2kdAeexeZAb4MXNWGxOVox_YJGq9=s96-c",
-    "learningPreferences": {
-      "dailyGoal": 1,
-      "notifications": true
-    }
-  },
-  "user_1754120571606_r6om804fx": {
-    "id": "user_1754120571606_r6om804fx",
-    "email": "ritvikvudatha@gmail.com",
-    "username": "user_1754120571606_ydsl9g",
-    "name": "Ritvik Vudatha",
-    "picture": "https://lh3.googleusercontent.com/a/ACg8ocIg8y2r8HULcCkDAGEQpBMzCYtHyBLhP1qhCzT1lsP45ko5rFM=s96-c",
-    "googleId": "105296474791496962591",
-    "createdAt": "2025-08-02T07:42:51.606Z",
-    "lastLogin": "2025-08-02T07:42:51.606Z",
-    "portfolio": {
-      "balance": 10000,
-      "positions": [],
-      "totalValue": 10000
-    },
-    "learningProgress": {
-      "xp": 0,
-      "coins": 0,
-      "completedLessons": [],
-      "completedUnitTests": [],
-      "finalTestCompleted": false,
-      "finalTestLastAttempt": null,
-      "unitTestAttempts": {},
-      "lessonAttempts": {}
-    },
-    "purchasedItems": []
   }
 }

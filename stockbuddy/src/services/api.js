@@ -188,7 +188,7 @@ export const api = {
   }).then(handleResponse),
 
   // Leaderboard
-  getLeaderboard: () => fetch(`${API_BASE_URL}/leaderboard`, {
+  getLeaderboard: () => fetch(`${API_BASE_URL}/auth/leaderboard`, {
     headers: getAuthHeaders()
   }).then(handleResponse),
 };

@@ -4,38 +4,495 @@ import { useNavigate } from "react-router-dom";
 import { marbleWhite, marbleLightGray, marbleGray, marbleDarkGray, marbleGold } from '../marblePalette';
 import { fontHeading, fontBody } from '../fontPalette';
 import { api, isAuthenticated, getCurrentUser } from '../services/api';
-import { getLevelProgress } from '../data/lessonStructure';
+import { getLevelProgress, lessonStructure } from '../data/lessonStructure';
 
-const DummyChart = () => (
-  <div style={{ 
-    width: '100%', 
-    height: '180px', 
-    display: 'flex', 
-    alignItems: 'flex-end', 
-    gap: '8px',
-    padding: '20px 0'
-  }}>
-    {[40, 60, 30, 80, 45, 70, 50, 90, 35, 65, 55, 75].map((height, i) => (
-      <div
-        key={i}
-        style={{
-          height: `${height}%`,
-          backgroundColor: marbleGold,
-          flex: 1,
-          borderRadius: '4px 4px 0 0'
-        }}
-      />
-    ))}
-  </div>
-);
+// Real Weekly Progress Chart Component
+const WeeklyProgressChart = ({ userData }) => {
+  const [weeklyData, setWeeklyData] = useState([]);
 
-// Sample trading milestones data
-const tradingMilestones = [
-  { title: "First Stock Purchase", xp: 50, status: "completed", icon: "🎯" },
-  { title: "Portfolio Diversification", xp: 75, status: "completed", icon: "📊" },
-  { title: "First Profitable Trade", xp: 100, status: "current", icon: "💰" },
-  { title: "Risk Management Master", xp: 150, status: "locked", icon: "🛡️" },
-];
+  useEffect(() => {
+    if (!userData?.learningProgress?.lessonAttempts) return;
+
+    // Generate last 7 days of data
+    const last7Days = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateString = date.toDateString();
+      
+      // Count lessons completed on this day
+      const lessonsCompleted = Object.keys(userData.learningProgress.lessonAttempts).filter(lessonId => {
+        const attempt = userData.learningProgress.lessonAttempts[lessonId];
+        if (attempt.lastAttempt) {
+          const attemptDate = new Date(attempt.lastAttempt).toDateString();
+          return attemptDate === dateString && attempt.completed;
+        }
+        return false;
+      }).length;
+
+      last7Days.push({
+        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        lessons: lessonsCompleted,
+        xp: lessonsCompleted * 25 // Assuming 25 XP per lesson
+      });
+    }
+    
+    setWeeklyData(last7Days);
+  }, [userData]);
+
+  const maxLessons = Math.max(...weeklyData.map(d => d.lessons), 1);
+
+  return (
+    <div style={{ 
+      width: '100%', 
+      height: '180px', 
+      display: 'flex', 
+      alignItems: 'flex-end', 
+      gap: '8px',
+      padding: '20px 0'
+    }}>
+      {weeklyData.map((day, i) => (
+        <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+          <div
+            style={{
+              height: `${(day.lessons / maxLessons) * 100}%`,
+              backgroundColor: day.lessons > 0 ? marbleGold : marbleGray,
+              borderRadius: '4px 4px 0 0',
+              marginBottom: '8px',
+              minHeight: '4px',
+              transition: 'all 0.3s ease'
+            }}
+          />
+          <div style={{ fontSize: '12px', color: marbleGray, marginBottom: '2px' }}>
+            {day.date}
+          </div>
+          <div style={{ fontSize: '10px', color: marbleDarkGray, fontWeight: '600' }}>
+            {day.lessons}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Real Trading Milestones Component
+const TradingMilestones = ({ userData, portfolio }) => {
+  const [milestones, setMilestones] = useState([]);
+
+  useEffect(() => {
+    if (!userData || !portfolio) return;
+
+    const completedLessons = userData.learningProgress?.completedLessons || [];
+    const transactions = userData.transactions || [];
+    const hasPositions = portfolio.positions && portfolio.positions.length > 0;
+    const totalValue = portfolio.totalValue || 0;
+    const totalReturn = portfolio.totalReturn || 0;
+
+    const milestoneData = [
+      {
+        id: 'first_lesson',
+        title: "First Lesson Complete",
+        xp: 25,
+        status: completedLessons.length > 0 ? "completed" : "locked",
+        icon: "📚",
+        description: "Complete your first lesson"
+      },
+      {
+        id: 'first_trade',
+        title: "First Stock Purchase",
+        xp: 50,
+        status: transactions.length > 0 ? "completed" : "locked",
+        icon: "🎯",
+        description: "Make your first stock purchase"
+      },
+      {
+        id: 'portfolio_diversification',
+        title: "Portfolio Diversification",
+        xp: 75,
+        status: hasPositions && portfolio.positions.length >= 2 ? "completed" : 
+                hasPositions ? "current" : "locked",
+        icon: "📊",
+        description: "Hold at least 2 different stocks"
+      },
+      {
+        id: 'profitable_trade',
+        title: "First Profitable Trade",
+        xp: 100,
+        status: totalReturn > 0 ? "completed" : 
+                hasPositions ? "current" : "locked",
+        icon: "💰",
+        description: "Achieve positive portfolio returns"
+      },
+      {
+        id: 'risk_management',
+        title: "Risk Management Master",
+        xp: 150,
+        status: completedLessons.includes(16) || completedLessons.includes(17) ? "completed" :
+                completedLessons.length >= 10 ? "current" : "locked",
+        icon: "🛡️",
+        description: "Complete risk management lessons"
+      },
+      {
+        id: 'advanced_trader',
+        title: "Advanced Trader",
+        xp: 200,
+        status: completedLessons.length >= 20 ? "completed" :
+                completedLessons.length >= 15 ? "current" : "locked",
+        icon: "🚀",
+        description: "Complete 20+ lessons"
+      }
+    ];
+
+    setMilestones(milestoneData);
+  }, [userData, portfolio]);
+
+  const renderMilestoneStatus = (status) => {
+    switch(status) {
+      case 'completed':
+        return (
+          <div style={{
+            backgroundColor: marbleGold,
+            color: marbleDarkGray,
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontSize: '12px',
+            fontWeight: '500'
+          }}>Completed</div>
+        );
+      case 'current':
+        return (
+          <div style={{
+            backgroundColor: marbleDarkGray,
+            color: marbleWhite,
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontSize: '12px',
+            fontWeight: '500'
+          }}>In Progress</div>
+        );
+      default:
+        return (
+          <div style={{
+            backgroundColor: marbleGray,
+            color: marbleWhite,
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontSize: '12px',
+            fontWeight: '500'
+          }}>Locked</div>
+        );
+    }
+  };
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, 1fr)',
+      gap: '20px'
+    }}>
+      {milestones.map((milestone, index) => (
+        <div key={milestone.id} style={{
+          backgroundColor: marbleWhite,
+          borderRadius: '16px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <div style={{
+            fontSize: '24px',
+            marginBottom: '4px'
+          }}>{milestone.icon}</div>
+          <div>
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: marbleDarkGray,
+              marginBottom: '8px'
+            }}>{milestone.title}</div>
+            <div style={{
+              fontSize: '14px',
+              color: marbleGray,
+              marginBottom: '12px'
+            }}>{milestone.xp} XP</div>
+            {renderMilestoneStatus(milestone.status)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Real Recent Activity Component
+const RecentActivity = ({ userData, portfolio }) => {
+  const [recentActivities, setRecentActivities] = useState([]);
+
+  useEffect(() => {
+    if (!userData) return;
+
+    const activities = [];
+    const today = new Date();
+
+    // Add recent lesson completions
+    if (userData.learningProgress?.lessonAttempts) {
+      Object.entries(userData.learningProgress.lessonAttempts).forEach(([lessonId, attempt]) => {
+        if (attempt.completed && attempt.lastAttempt) {
+          const lesson = lessonStructure.units
+            .flatMap(unit => unit.lessons)
+            .find(l => l.id === parseInt(lessonId));
+          
+          if (lesson) {
+            activities.push({
+              id: `lesson_${lessonId}`,
+              type: 'lesson',
+              title: `Completed: ${lesson.title}`,
+              timestamp: new Date(attempt.lastAttempt),
+              icon: '📚',
+              xp: lesson.xp
+            });
+          }
+        }
+      });
+    }
+
+    // Add recent transactions
+    if (userData.transactions) {
+      userData.transactions.forEach(transaction => {
+        activities.push({
+          id: `transaction_${transaction.id}`,
+          type: 'trade',
+          title: `${transaction.type.toUpperCase()} ${transaction.shares} shares of ${transaction.symbol}`,
+          timestamp: new Date(transaction.timestamp),
+          icon: transaction.type === 'buy' ? '📈' : '📉',
+          amount: transaction.total
+        });
+      });
+    }
+
+    // Sort by timestamp and take last 5
+    activities.sort((a, b) => b.timestamp - a.timestamp);
+    setRecentActivities(activities.slice(0, 5));
+  }, [userData, portfolio]);
+
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
+  };
+
+  return (
+    <div>
+      {recentActivities.length > 0 ? (
+        recentActivities.map((activity) => (
+          <div key={activity.id} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '16px',
+            color: marbleDarkGray
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: marbleLightGray,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px'
+            }}>
+              {activity.icon}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '2px' }}>
+                {activity.title}
+              </div>
+              <div style={{ fontSize: '12px', color: marbleGray }}>
+                {formatTimeAgo(activity.timestamp)}
+                {activity.xp && ` • +${activity.xp} XP`}
+                {activity.amount && ` • $${activity.amount.toFixed(2)}`}
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          padding: '20px',
+          color: marbleGray
+        }}>
+          No recent activity. Start learning or trading!
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Real Leaderboard Component
+const Leaderboard = ({ userData }) => {
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [totalUsers, setTotalUsers] = useState(0);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await api.getLeaderboard();
+        if (response.success) {
+          setLeaderboard(response.leaderboard || []);
+          setTotalUsers(response.totalUsers || 0);
+        } else {
+          setError('Failed to load leaderboard');
+        }
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        setError('Failed to load leaderboard');
+        // Fallback to mock data for development
+        setLeaderboard([
+          { username: 'TraderPro', xp: 1250, rank: 1, completedLessons: 15 },
+          { username: 'StockMaster', xp: 1100, rank: 2, completedLessons: 12 },
+          { username: 'InvestorGuru', xp: 950, rank: 3, completedLessons: 10 },
+          { username: 'MarketWiz', xp: 800, rank: 4, completedLessons: 8 }
+        ]);
+        setTotalUsers(4);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated()) {
+      fetchLeaderboard();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    const now = new Date();
+    const lastLogin = new Date(timestamp);
+    const diff = now - lastLogin;
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor(diff / 3600000);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    return 'Recently';
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '20px', color: marbleGray }}>
+        Loading leaderboard...
+      </div>
+    );
+  }
+
+  if (error && leaderboard.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '20px', color: '#ef4444' }}>
+        {error}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {totalUsers > 0 && (
+        <div style={{
+          fontSize: '12px',
+          color: marbleGray,
+          marginBottom: '16px',
+          textAlign: 'center'
+        }}>
+          {totalUsers} total users
+        </div>
+      )}
+      
+      {leaderboard.length > 0 ? (
+        leaderboard.map((user, index) => (
+          <div key={user.userId || user.rank || index} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '16px',
+            color: marbleDarkGray,
+            padding: '8px',
+            borderRadius: '8px',
+            backgroundColor: user.rank <= 3 ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: user.rank === 1 ? marbleGold : 
+                             user.rank === 2 ? marbleGray : 
+                             user.rank === 3 ? '#cd7f32' : marbleLightGray,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: user.rank <= 3 ? marbleWhite : marbleDarkGray,
+              flexShrink: 0
+            }}>
+              {user.rank || index + 1}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ 
+                fontSize: '14px', 
+                fontWeight: '600',
+                marginBottom: '2px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {user.name || user.username}
+              </div>
+              <div style={{ 
+                fontSize: '11px', 
+                color: marbleGray,
+                display: 'flex',
+                gap: '8px'
+              }}>
+                <span>{user.completedLessons || 0} lessons</span>
+                {user.lastLogin && (
+                  <span>• {formatTimeAgo(user.lastLogin)}</span>
+                )}
+              </div>
+            </div>
+            <div style={{ 
+              fontWeight: '600',
+              color: marbleGold,
+              fontSize: '14px',
+              flexShrink: 0
+            }}>
+              {user.xp}XP
+            </div>
+          </div>
+        ))
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          padding: '20px',
+          color: marbleGray
+        }}>
+          No leaderboard data available
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -64,7 +521,7 @@ export default function Dashboard() {
           totalValue: response.portfolio.totalValue,
           cash: response.portfolio.balance,
           totalReturn: 0, // Will calculate below
-          holdings: response.portfolio.positions.map(position => ({
+          positions: response.portfolio.positions.map(position => ({
             symbol: position.symbol,
             shares: position.shares,
             currentValue: position.shares * (position.currentPrice || position.avgPrice),
@@ -164,44 +621,6 @@ export default function Dashboard() {
   const getChangeColor = (change) => {
     if (!change) return marbleGray;
     return change >= 0 ? '#22c55e' : '#ef4444';
-  };
-
-  const renderMilestoneStatus = (status) => {
-    switch(status) {
-      case 'completed':
-        return (
-          <div style={{
-            backgroundColor: marbleGold,
-            color: marbleDarkGray,
-            padding: '4px 12px',
-            borderRadius: '12px',
-            fontSize: '12px',
-            fontWeight: '500'
-          }}>Completed</div>
-        );
-      case 'current':
-        return (
-          <div style={{
-            backgroundColor: marbleDarkGray,
-            color: marbleWhite,
-            padding: '4px 12px',
-            borderRadius: '12px',
-            fontSize: '12px',
-            fontWeight: '500'
-          }}>In Progress</div>
-        );
-      default:
-        return (
-          <div style={{
-            backgroundColor: marbleGray,
-            color: marbleWhite,
-            padding: '4px 12px',
-            borderRadius: '12px',
-            fontSize: '12px',
-            fontWeight: '500'
-          }}>Locked</div>
-        );
-    }
   };
 
   // Get current user info
@@ -618,7 +1037,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Holdings */}
-                  {portfolio.holdings && portfolio.holdings.length > 0 ? (
+                  {portfolio.positions && portfolio.positions.length > 0 ? (
                     <div>
                       <h3 style={{
                         fontSize: '16px',
@@ -631,7 +1050,7 @@ export default function Dashboard() {
                         flexDirection: 'column',
                         gap: '12px'
                       }}>
-                        {portfolio.holdings.map((holding, index) => (
+                        {portfolio.positions.map((holding, index) => (
                           <div key={index} style={{
                             backgroundColor: marbleWhite,
                             borderRadius: '12px',
@@ -696,7 +1115,7 @@ export default function Dashboard() {
                 color: marbleDarkGray,
                 fontFamily: fontHeading
               }}>Weekly Progress</h2>
-              <DummyChart />
+              <WeeklyProgressChart userData={userData} />
             </div>
 
             {/* Learning Path */}
@@ -729,41 +1148,7 @@ export default function Dashboard() {
                 }}>View All</button>
               </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '20px'
-              }}>
-                {tradingMilestones.map((milestone, index) => (
-                  <div key={index} style={{
-                    backgroundColor: marbleWhite,
-                    borderRadius: '16px',
-                    padding: '20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                  }}>
-                    <div style={{
-                      fontSize: '24px',
-                      marginBottom: '4px'
-                    }}>{milestone.icon}</div>
-                    <div>
-                      <div style={{
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        color: marbleDarkGray,
-                        marginBottom: '8px'
-                      }}>{milestone.title}</div>
-                      <div style={{
-                        fontSize: '14px',
-                        color: marbleGray,
-                        marginBottom: '12px'
-                      }}>{milestone.xp} XP</div>
-                      {renderMilestoneStatus(milestone.status)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TradingMilestones userData={userData} portfolio={portfolio} />
             </div>
 
             {/* Current Lesson */}
@@ -823,27 +1208,7 @@ export default function Dashboard() {
                 color: marbleDarkGray,
                 fontFamily: fontHeading
               }}>Leaderboard</h2>
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '16px',
-                  color: marbleDarkGray
-                }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    backgroundColor: marbleGray,
-                    borderRadius: '50%'
-                  }}></div>
-                  <div style={{ flex: 1 }}>User {i}</div>
-                  <div style={{ 
-                    fontWeight: '500',
-                    color: marbleGold 
-                  }}>{1000 - i * 100}XP</div>
-                </div>
-              ))}
+              <Leaderboard userData={userData} />
             </div>
 
             {/* Recent Activity */}
@@ -859,27 +1224,11 @@ export default function Dashboard() {
                 color: marbleDarkGray,
                 fontFamily: fontHeading
               }}>Recent Activity</h2>
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '16px',
-                  color: marbleDarkGray
-                }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    backgroundColor: marbleGray,
-                    borderRadius: '50%'
-                  }}></div>
-                  <div>Completed Lesson {i}</div>
-                </div>
-              ))}
+              <RecentActivity userData={userData} portfolio={portfolio} />
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
