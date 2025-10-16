@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import PageTransition from "./components/PageTransition";
 import Home from "./pages/Home";
@@ -14,13 +14,34 @@ import AICoach from './pages/AICoach';
 import Shop from './pages/Shop';
 import ArticleReader from './components/ArticleReader';
 import { useNavbarBackground } from './hooks/useNavbarBackground';
+import { isAuthenticated } from './services/api';
 
 function AppContent() {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const { setNavbarBackground } = useNavbarBackground();
+
+  // Check token validity on mount and when location changes
+  useEffect(() => {
+    const checkAuth = () => {
+      const authenticated = isAuthenticated();
+      setIsLoggedIn(authenticated);
+      
+      // If user is on a protected route and not authenticated, redirect to sign in
+      const protectedRoutes = ['/dashboard', '/trade', '/learn', '/ai-coach', '/shop', '/settings'];
+      const isProtectedRoute = protectedRoutes.some(route => location.pathname.startsWith(route));
+      
+      if (isProtectedRoute && !authenticated) {
+        console.log('User not authenticated, redirecting to sign in...');
+        navigate('/signin', { replace: true });
+      }
+    };
+    
+    checkAuth();
+  }, [location.pathname, navigate]);
 
   // Handle page background transitions and navbar coordination
   useEffect(() => {

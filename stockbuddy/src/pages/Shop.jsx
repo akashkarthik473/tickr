@@ -1,111 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import progressManager from '../utils/progressManager';
+import { api } from '../services/api';
 import { marbleWhite, marbleLightGray, marbleGray, marbleDarkGray, marbleGold } from '../marblePalette';
 import { fontHeading, fontBody } from '../fontPalette';
 
-// Shop items data
-const shopItems = [
-  {
-    id: 1,
-    name: "XP Booster",
-    description: "Get 50% more XP for the next 3 lessons",
-    price: 25,
-    type: "booster",
-    icon: "⚡",
-    rarity: "common"
-  },
-  {
-    id: 2,
-    name: "Premium Avatar",
-    description: "Unlock a special trading-themed avatar",
-    price: 100,
-    type: "cosmetic",
-    icon: "👤",
-    rarity: "rare"
-  },
-  {
-    id: 3,
-    name: "Study Guide",
-    description: "Access to detailed study materials for all lessons",
-    price: 150,
-    type: "content",
-    icon: "📚",
-    rarity: "epic"
-  },
-  {
-    id: 4,
-    name: "Practice Tests",
-    description: "Unlimited practice tests for all units",
-    price: 200,
-    type: "content",
-    icon: "📝",
-    rarity: "epic"
-  },
-  {
-    id: 5,
-    name: "Trading Simulator",
-    description: "Advanced trading simulation with real market data",
-    price: 500,
-    type: "feature",
-    icon: "🎮",
-    rarity: "legendary"
-  },
-  {
-    id: 6,
-    name: "Mentor Access",
-    description: "1-on-1 session with a trading expert",
-    price: 1000,
-    type: "service",
-    icon: "🎓",
-    rarity: "legendary"
-  },
-  {
-    id: 7,
-    name: "Portfolio Tracker",
-    description: "Advanced portfolio analytics and insights",
-    price: 300,
-    type: "feature",
-    icon: "📊",
-    rarity: "epic"
-  },
-  {
-    id: 8,
-    name: "Market Alerts",
-    description: "Real-time market notifications and alerts",
-    price: 75,
-    type: "feature",
-    icon: "🔔",
-    rarity: "rare"
-  }
-];
-
 export default function Shop() {
   const navigate = useNavigate();
-  const [userProgress, setUserProgress] = useState(null);
+  const [shopItems, setShopItems] = useState([]);
+  const [userCoins, setUserCoins] = useState(0);
   const [purchasedItems, setPurchasedItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Load user progress
-    setUserProgress(progressManager.getOverallProgress());
-    
-    // Load purchased items from localStorage
-    const stored = localStorage.getItem('stockbuddy_purchased_items');
-    if (stored) {
-      setPurchasedItems(JSON.parse(stored));
-    }
+    fetchShopData();
   }, []);
+
+  const fetchShopData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🛍️ Shop: Fetching shop data...');
+      
+      // Fetch shop items, purchases, and user data in parallel
+      const [itemsResponse, purchasesResponse, userDataResponse] = await Promise.all([
+        api.getShopItems(),
+        api.getPurchases(),
+        api.getUserData()
+      ]);
+
+      console.log('📦 Shop: Items received:', itemsResponse.items?.length || 0);
+      console.log('🛒 Shop: Purchases received:', purchasesResponse.purchases?.length || 0);
+      console.log('💰 Shop: User coins:', userDataResponse.user?.learningProgress?.coins || 0);
+
+      setShopItems(itemsResponse.items || []);
+      setPurchasedItems(purchasesResponse.purchases || []);
+      setUserCoins(userDataResponse.user?.learningProgress?.coins || 0);
+    } catch (err) {
+      console.error('❌ Shop: Error fetching data:', err);
+      setError(err.message || 'Failed to load shop data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = [
     { id: 'all', name: 'All Items' },
     { id: 'booster', name: 'Boosters' },
     { id: 'cosmetic', name: 'Cosmetics' },
-    { id: 'content', name: 'Content' },
     { id: 'feature', name: 'Features' },
-    { id: 'service', name: 'Services' }
+    { id: 'utility', name: 'Utilities' }
   ];
 
   const filteredItems = shopItems.filter(item => 
@@ -113,7 +61,7 @@ export default function Shop() {
   );
 
   const handlePurchase = (item) => {
-    if (userProgress.coins >= item.price) {
+    if (userCoins >= item.price) {
       setSelectedItem(item);
       setShowPurchaseModal(true);
     } else {
@@ -121,63 +69,62 @@ export default function Shop() {
     }
   };
 
-  const confirmPurchase = () => {
+  const confirmPurchase = async () => {
     if (!selectedItem) return;
 
-    // Deduct coins
-    const newCoins = userProgress.coins - selectedItem.price;
-    progressManager.progress.coins = newCoins;
-    progressManager.saveProgress();
+    try {
+      console.log(`🛒 Shop: Purchasing ${selectedItem.name} (ID: ${selectedItem.id}) for ${selectedItem.price} coins...`);
+      console.log(`💰 Shop: Current balance: ${userCoins} coins`);
+      
+      // Call backend to purchase item
+      const response = await api.purchaseItem(selectedItem.id);
+      
+      if (response.success) {
+        console.log('✅ Shop: Purchase successful!', response);
+        console.log(`💰 Shop: New balance: ${response.remainingCoins} coins`);
+        
+        // Update local state
+        setUserCoins(response.remainingCoins);
+        setPurchasedItems([...purchasedItems, response.purchase]);
 
-    // Add to purchased items
-    const newPurchasedItems = [...purchasedItems, {
-      ...selectedItem,
-      purchasedAt: new Date().toISOString()
-    }];
-    setPurchasedItems(newPurchasedItems);
-    localStorage.setItem('stockbuddy_purchased_items', JSON.stringify(newPurchasedItems));
-
-    // Update user progress
-    setUserProgress({ ...userProgress, coins: newCoins });
-
-    // Apply item effects
-    applyItemEffect(selectedItem);
-
-    setShowPurchaseModal(false);
-    setSelectedItem(null);
+        // Show success message
+        alert(getSuccessMessage(selectedItem));
+        
+        setShowPurchaseModal(false);
+        setSelectedItem(null);
+      } else {
+        console.error('❌ Shop: Purchase failed - backend returned success: false');
+        alert('Purchase failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('❌ Shop: Purchase failed:', err);
+      alert(err.message || 'Purchase failed. Please try again.');
+    }
   };
 
-  const applyItemEffect = (item) => {
+  const getSuccessMessage = (item) => {
     switch (item.type) {
       case 'booster':
-        // Apply XP booster effect
-        localStorage.setItem('stockbuddy_xp_booster', JSON.stringify({
-          active: true,
-          multiplier: 1.5,
-          lessonsRemaining: 3,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-        }));
-        alert('XP Booster activated! You\'ll get 50% more XP for the next 3 lessons.');
-        break;
-      case 'cosmetic':
-        alert('Avatar unlocked! You can now use this avatar in your profile.');
-        break;
-      case 'content':
-        alert('Content unlocked! Check your learning materials for new content.');
-        break;
-      case 'feature':
-        alert('Feature unlocked! New features are now available in the app.');
-        break;
-      case 'service':
-        alert('Service purchased! You\'ll receive an email with booking instructions.');
-        break;
+        if (item.effect.type === 'xp_multiplier') {
+          const bonusPercent = (item.effect.multiplier - 1) * 100;
+          return `XP Booster activated! You'll get ${bonusPercent}% more XP for the next ${item.effect.lessonsRemaining} lessons.`;
+        } else if (item.effect.type === 'coin_multiplier') {
+          const bonusPercent = (item.effect.multiplier - 1) * 100;
+          return `Coin Doubler activated! You'll get ${bonusPercent}% more coins for the next ${item.effect.lessonsRemaining} lessons.`;
+        }
+        return 'Booster activated!';
+      case 'utility':
+        if (item.effect.type === 'instant_coins') {
+          return `Success! You received ${item.effect.amount} coins instantly!`;
+        }
+        return `${item.name} purchased successfully!`;
       default:
-        alert('Item purchased successfully!');
+        return 'Item purchased successfully!';
     }
   };
 
   const isItemPurchased = (itemId) => {
-    return purchasedItems.some(item => item.id === itemId);
+    return purchasedItems.some(item => item.itemId === itemId);
   };
 
   const getRarityColor = (rarity) => {
@@ -190,7 +137,7 @@ export default function Shop() {
     }
   };
 
-  if (!userProgress) {
+  if (loading) {
     return (
       <div style={{
         minHeight: "100vh",
@@ -201,6 +148,38 @@ export default function Shop() {
         fontFamily: fontBody
       }}>
         <div>Loading shop...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        backgroundColor: marbleWhite,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: "16px",
+        fontFamily: fontBody
+      }}>
+        <div style={{ color: marbleDarkGray, fontSize: "18px" }}>❌ {error}</div>
+        <button
+          onClick={fetchShopData}
+          style={{
+            backgroundColor: marbleGold,
+            color: marbleDarkGray,
+            border: "none",
+            padding: "12px 24px",
+            borderRadius: "12px",
+            fontSize: "16px",
+            fontWeight: "600",
+            cursor: "pointer"
+          }}
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -263,28 +242,61 @@ export default function Shop() {
             padding: "16px",
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: "12px"
           }}>
             <div style={{
-              fontSize: "24px"
+              display: "flex",
+              alignItems: "center",
+              gap: "12px"
             }}>
-              🪙
-            </div>
-            <div>
               <div style={{
-                fontSize: "20px",
-                fontWeight: "bold",
-                color: marbleDarkGray
+                fontSize: "24px"
               }}>
-                {userProgress.coins} Coins
+                🪙
               </div>
-              <div style={{
+              <div>
+                <div style={{
+                  fontSize: "20px",
+                  fontWeight: "bold",
+                  color: marbleDarkGray
+                }}>
+                  {userCoins} Coins
+                </div>
+                <div style={{
+                  fontSize: "14px",
+                  color: marbleGray
+                }}>
+                  Available Balance
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  console.log('🎁 Adding test coins...');
+                  const response = await api.addTestCoins(100);
+                  if (response.success) {
+                    setUserCoins(response.newBalance);
+                    console.log('✅ Test coins added! New balance:', response.newBalance);
+                  }
+                } catch (err) {
+                  console.error('❌ Failed to add test coins:', err);
+                }
+              }}
+              style={{
+                backgroundColor: marbleGold,
+                color: marbleDarkGray,
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: "8px",
                 fontSize: "14px",
-                color: marbleGray
-              }}>
-                Available Balance
-              </div>
-            </div>
+                fontWeight: "600",
+                cursor: "pointer"
+              }}
+            >
+              + Add Test Coins
+            </button>
           </div>
         </div>
       </div>
@@ -440,19 +452,19 @@ export default function Shop() {
                 ) : (
                   <button
                     onClick={() => handlePurchase(item)}
-                    disabled={userProgress.coins < item.price}
+                    disabled={userCoins < item.price}
                     style={{
-                      backgroundColor: userProgress.coins >= item.price ? marbleGold : marbleGray,
-                      color: userProgress.coins >= item.price ? marbleDarkGray : marbleWhite,
+                      backgroundColor: userCoins >= item.price ? marbleGold : marbleGray,
+                      color: userCoins >= item.price ? marbleDarkGray : marbleWhite,
                       border: "none",
                       padding: "8px 16px",
                       borderRadius: "8px",
                       fontSize: "14px",
                       fontWeight: "600",
-                      cursor: userProgress.coins >= item.price ? "pointer" : "not-allowed"
+                      cursor: userCoins >= item.price ? "pointer" : "not-allowed"
                     }}
                   >
-                    {userProgress.coins >= item.price ? "Purchase" : "Not Enough Coins"}
+                    {userCoins >= item.price ? "Purchase" : "Not Enough Coins"}
                   </button>
                 )}
               </div>

@@ -911,6 +911,45 @@ router.post('/send-goal-reminder', authenticateToken, async (req, res) => {
   }
 });
 
+// Test endpoint to add coins (for testing shop functionality)
+router.post('/add-test-coins', authenticateToken, (req, res) => {
+  try {
+    const { amount } = req.body;
+    const users = getUsers(req);
+    const user = users[req.user.userId];
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.learningProgress) {
+      user.learningProgress = { xp: 0, coins: 0 };
+    }
+
+    const coinsToAdd = amount || 100;
+    user.learningProgress.coins += coinsToAdd;
+    
+    saveUsers(req, users);
+    
+    console.log(`[TEST] Added ${coinsToAdd} coins to user ${req.user.userId}. New balance: ${user.learningProgress.coins}`);
+
+    res.json({
+      success: true,
+      message: `Added ${coinsToAdd} test coins`,
+      newBalance: user.learningProgress.coins
+    });
+  } catch (error) {
+    console.error('Add test coins error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add test coins'
+    });
+  }
+});
+
 // Get leaderboard
 router.get('/leaderboard', async (req, res) => {
   try {

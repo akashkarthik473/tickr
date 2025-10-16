@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd stockbuddy && npm install && npm run build",
-  "outputDirectory": "stockbuddy/dist",
-  "installCommand": "cd stockbuddy && npm install",
-  "framework": "vite"
-} 

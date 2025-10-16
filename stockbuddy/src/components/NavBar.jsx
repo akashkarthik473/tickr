@@ -1,10 +1,23 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { isAuthenticated } from '../services/api';
 import './NavBar.css';
 
 function NavBar({ isLoggedIn, setIsLoggedIn }) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Check authentication status on mount and route changes
+  useEffect(() => {
+    const checkAuth = () => {
+      const authenticated = isAuthenticated();
+      if (isLoggedIn !== authenticated) {
+        setIsLoggedIn(authenticated);
+      }
+    };
+    
+    checkAuth();
+  }, [location.pathname, isLoggedIn, setIsLoggedIn]);
 
   const handleSignOut = () => {
     localStorage.removeItem('token');

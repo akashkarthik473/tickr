@@ -6,6 +6,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const tradingRoutes = require('./routes/trading');
 const aiCoachRoutes = require('./routes/ai-coach');
+const shopRoutes = require('./routes/shop');
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -119,6 +120,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/trading', tradingRoutes);
 app.use('/api/ai-coach', aiCoachRoutes);
+app.use('/api/shop', shopRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

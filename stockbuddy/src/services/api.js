@@ -5,11 +5,27 @@ const handleResponse = async (response) => {
   try {
     const data = await response.json();
     if (!response.ok) {
+      // Handle expired/invalid token (401 Unauthorized)
+      if (response.status === 401) {
+        console.warn('Token expired or invalid, logging out...');
+        localStorage.removeItem('token');
+        // Redirect to sign-in page
+        window.location.href = '/signin';
+        throw new Error('Session expired. Please sign in again.');
+      }
       throw new Error(data.message || 'API request failed');
     }
     return data;
   } catch (error) {
     if (!response.ok) {
+      // Handle expired/invalid token (401 Unauthorized)
+      if (response.status === 401) {
+        console.warn('Token expired or invalid, logging out...');
+        localStorage.removeItem('token');
+        // Redirect to sign-in page
+        window.location.href = '/signin';
+        throw new Error('Session expired. Please sign in again.');
+      }
       throw new Error(`Request failed with status ${response.status}`);
     }
     throw new Error('Network error');
@@ -18,6 +34,12 @@ const handleResponse = async (response) => {
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
+  // Check if authenticated (this will clear expired tokens)
+  if (!isAuthenticated()) {
+    // Don't throw error here, let the handleResponse function handle the redirect
+    console.warn('No valid authentication token found');
+  }
+  
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('No authentication token found. Please sign in.');
@@ -191,6 +213,32 @@ export const api = {
   getLeaderboard: () => fetch(`${API_BASE_URL}/auth/leaderboard`, {
     headers: getAuthHeaders()
   }).then(handleResponse),
+
+  // Shop endpoints
+  getShopItems: () => fetch(`${API_BASE_URL}/shop/items`, {
+    headers: getAuthHeaders()
+  }).then(handleResponse),
+
+  getPurchases: () => fetch(`${API_BASE_URL}/shop/purchases`, {
+    headers: getAuthHeaders()
+  }).then(handleResponse),
+
+  purchaseItem: (itemId) => fetch(`${API_BASE_URL}/shop/purchase`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ itemId })
+  }).then(handleResponse),
+
+  getActiveEffects: () => fetch(`${API_BASE_URL}/shop/active-effects`, {
+    headers: getAuthHeaders()
+  }).then(handleResponse),
+
+  // Test endpoint to add coins for testing
+  addTestCoins: (amount = 100) => fetch(`${API_BASE_URL}/auth/add-test-coins`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ amount })
+  }).then(handleResponse),
 };
 
 // Utility function to check if API is available
@@ -205,11 +253,36 @@ export const isApiAvailable = async () => {
 
 // Utility function to check if user is authenticated
 export const isAuthenticated = () => {
-  return !!localStorage.getItem('token');
+  const token = localStorage.getItem('token');
+  if (!token) return false;
+  
+  try {
+    // Decode JWT token to check expiration
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp;
+    
+    // Check if token is expired (exp is in seconds, Date.now() is in milliseconds)
+    if (exp && exp * 1000 < Date.now()) {
+      console.warn('Token has expired, clearing...');
+      localStorage.removeItem('token');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error checking token validity:', error);
+    localStorage.removeItem('token');
+    return false;
+  }
 };
 
 // Utility function to get current user info from token
 export const getCurrentUser = () => {
+  // First check if authenticated (this will clear expired tokens)
+  if (!isAuthenticated()) {
+    return null;
+  }
+  
   const token = localStorage.getItem('token');
   if (!token) return null;
   
@@ -222,6 +295,8 @@ export const getCurrentUser = () => {
       username: payload.username
     };
   } catch (error) {
+    console.error('Error decoding token:', error);
+    localStorage.removeItem('token');
     return null;
   }
 };

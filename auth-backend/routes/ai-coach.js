@@ -7,14 +7,15 @@ const hasOpenAI = !!process.env.OPENAI_API_KEY;
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_MODEL = 'gpt-5';
 
-async function callOpenAI(messages, { maxTokens = 700, temperature = 0.3, timeout = 45000 } = {}) {
+async function callOpenAI(messages, { maxTokens = 700, reasoningEffort = "minimal", verbosity = "medium", timeout = 45000 } = {}) {
   const resp = await axios.post(
     OPENAI_ENDPOINT,
     {
       model: "gpt-5",
       messages,
-      temperature,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
+      reasoning_effort: reasoningEffort,
+      verbosity: verbosity,
     },
     {
       headers: { 
@@ -138,7 +139,7 @@ router.get('/diagnostics', async (req, res) => {
           { role: 'system', content: 'You are a health check. Reply with OK.' },
           { role: 'user', content: 'OK?' },
         ],
-        { maxTokens: 3, timeout: 15000 }
+        { maxTokens: 3, reasoningEffort: "minimal", verbosity: "low", timeout: 15000 }
       );
       result.openaiOk = /ok/i.test(out || '');
       result.openaiResponse = out;
@@ -166,7 +167,7 @@ router.get('/test-ai', async (req, res) => {
             { role: 'system', content: 'You are a test assistant. Identify yourself and your model.' },
             { role: 'user', content: 'What AI model are you? Please respond with just your model name.' },
           ],
-          { maxTokens: 50, temperature: 0.1, timeout: 15000 }
+          { maxTokens: 50, reasoningEffort: "minimal", verbosity: "low", timeout: 15000 }
         );
         result.aiResponse = response;
         result.success = true;
@@ -201,7 +202,7 @@ router.post('/chat', async (req, res) => {
           { role: 'system', content: chatSystemPrompt() },
           { role: 'user', content: formatChatUserContent(message, scenario) },
         ],
-        { maxTokens: 700, temperature: 0.35, timeout: 90000 }
+        { maxTokens: 700, reasoningEffort: "medium", verbosity: "medium", timeout: 90000 }
       );
       return res.json({ success: true, response: content });
     }
@@ -233,7 +234,7 @@ router.post('/analyze', async (req, res) => {
           { role: 'system', content: analyzeSystemPrompt() },
           { role: 'user', content: formatAnalyzeUserContent(userDecisions, scenario, optimalStrategy) },
         ],
-        { maxTokens: 900, temperature: 0.2, timeout: 120000 }
+        { maxTokens: 900, reasoningEffort: "high", verbosity: "high", timeout: 120000 }
       );
       try {
         const parsed = JSON.parse(content);
