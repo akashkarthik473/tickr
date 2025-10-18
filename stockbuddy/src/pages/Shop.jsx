@@ -116,6 +116,12 @@ export default function Shop() {
       case 'utility':
         if (item.effect.type === 'instant_coins') {
           return `Success! You received ${item.effect.amount} coins instantly!`;
+        } else if (item.effect.type === 'instant_xp') {
+          return `Success! You received ${item.effect.amount} XP instantly!`;
+        } else if (item.effect.type === 'skip_token') {
+          return `Lesson Skip Token added to your inventory! Use it to skip any lesson while keeping your progress.`;
+        } else if (item.effect.type === 'streak_freeze') {
+          return `Streak Freeze activated! Your learning streak is protected for ${item.effect.days} days.`;
         }
         return `${item.name} purchased successfully!`;
       default:

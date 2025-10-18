@@ -14,7 +14,7 @@
     },
     "learningProgress": {
       "xp": 55,
-      "coins": 35,
+      "coins": 95,
       "completedLessons": [
         1,
         2
@@ -52,10 +52,24 @@
         }
       }
     },
-    "purchasedItems": [],
+    "purchasedItems": [
+      {
+        "itemId": 5,
+        "itemName": "Lesson Skip Token",
+        "itemType": "utility",
+        "price": 40,
+        "purchasedAt": "2025-10-18T09:25:42.782Z",
+        "effect": {
+          "type": "skip_token",
+          "uses": 1
+        },
+        "active": true
+      }
+    ],
     "learningPreferences": {
       "dailyGoal": 3,
       "notifications": true
-    }
+    },
+    "skipTokens": 1
   }
 }

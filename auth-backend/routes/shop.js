@@ -90,15 +90,41 @@ const SHOP_ITEMS = [
   },
   {
     id: 4,
-    name: "Coin Starter Pack",
-    description: "Instantly receive 100 bonus coins",
-    price: 25,
+    name: "XP Bundle",
+    description: "Instantly receive 200 bonus XP to level up faster",
+    price: 30,
     type: "utility",
-    icon: "💰",
+    icon: "🎁",
     rarity: "common",
     effect: {
-      type: "instant_coins",
-      amount: 100
+      type: "instant_xp",
+      amount: 200
+    }
+  },
+  {
+    id: 5,
+    name: "Lesson Skip Token",
+    description: "Skip any one lesson while maintaining your progress and streak",
+    price: 40,
+    type: "utility",
+    icon: "⏭️",
+    rarity: "rare",
+    effect: {
+      type: "skip_token",
+      uses: 1
+    }
+  },
+  {
+    id: 6,
+    name: "Streak Freeze",
+    description: "Protect your learning streak for 3 days even if you miss lessons",
+    price: 60,
+    type: "utility",
+    icon: "🛡️",
+    rarity: "rare",
+    effect: {
+      type: "streak_freeze",
+      days: 3
     }
   }
 ];
@@ -250,10 +276,23 @@ router.post('/purchase', authenticateToken, (req, res) => {
         purchasedAt: purchase.purchasedAt
       };
       console.log(`[${getTimestamp()}] ⚡ Shop: Activated ${item.effect.type} effect for user ${req.user.userId}`);
-    } else if (item.type === 'utility' && item.effect.type === 'instant_coins') {
-      // Give instant coins
-      user.learningProgress.coins += item.effect.amount;
-      console.log(`[${getTimestamp()}] 💰 Shop: Granted ${item.effect.amount} instant coins to user ${req.user.userId}`);
+    } else if (item.type === 'utility') {
+      // Handle instant effects
+      if (item.effect.type === 'instant_coins') {
+        user.learningProgress.coins += item.effect.amount;
+        console.log(`[${getTimestamp()}] 💰 Shop: Granted ${item.effect.amount} instant coins to user ${req.user.userId}`);
+      } else if (item.effect.type === 'instant_xp') {
+        user.learningProgress.xp = (user.learningProgress.xp || 0) + item.effect.amount;
+        console.log(`[${getTimestamp()}] 🎁 Shop: Granted ${item.effect.amount} instant XP to user ${req.user.userId}`);
+      } else if (item.effect.type === 'skip_token') {
+        if (!user.skipTokens) user.skipTokens = 0;
+        user.skipTokens += item.effect.uses;
+        console.log(`[${getTimestamp()}] ⏭️ Shop: Granted ${item.effect.uses} skip token(s) to user ${req.user.userId}`);
+      } else if (item.effect.type === 'streak_freeze') {
+        if (!user.streakFreezes) user.streakFreezes = 0;
+        user.streakFreezes += item.effect.days;
+        console.log(`[${getTimestamp()}] 🛡️ Shop: Granted ${item.effect.days} streak freeze days to user ${req.user.userId}`);
+      }
     }
 
     // Save updated user data

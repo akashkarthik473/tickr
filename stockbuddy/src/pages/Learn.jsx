@@ -347,7 +347,11 @@ export default function Learn() {
                   transition: "transform 0.2s ease, box-shadow 0.2s ease",
                   opacity: isUnlocked ? 1 : 0.5,
                   filter: isUnlocked ? "none" : "grayscale(100%)",
-                  position: "relative"
+                  position: "relative",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                  MozUserSelect: "none",
+                  msUserSelect: "none"
                 }}
                 onClick={() => isUnlocked && handleUnitClick(unit)}
                 onMouseEnter={(e) => {
@@ -405,7 +409,11 @@ export default function Learn() {
                       fontSize: "20px",
                       fontWeight: "bold",
                       color: marbleDarkGray,
-                      marginBottom: "4px"
+                      marginBottom: "4px",
+                      userSelect: "none",
+                      WebkitUserSelect: "none",
+                      MozUserSelect: "none",
+                      msUserSelect: "none"
                     }}>
                       {unit.title}
                     </div>

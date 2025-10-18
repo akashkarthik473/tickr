@@ -12,6 +12,7 @@ import Settings from './pages/Settings';
 import LessonDetail from "./pages/LessonDetail";
 import AICoach from './pages/AICoach';
 import Shop from './pages/Shop';
+import Inventory from './pages/Inventory';
 import ArticleReader from './components/ArticleReader';
 import { useNavbarBackground } from './hooks/useNavbarBackground';
 import { isAuthenticated } from './services/api';
@@ -120,6 +121,7 @@ function AppContent() {
               <Route path="/learn" element={<Learn />} />
               <Route path="/ai-coach" element={<AICoach />} />
               <Route path="/shop" element={<Shop />} />
+              <Route path="/inventory" element={<Inventory />} />
               <Route path="/learn/lesson/:lessonId" element={<LessonDetail />} />
               <Route path="/article/:articleId" element={<ArticleReader />} />
               <Route path="/settings" element={<Settings />} />

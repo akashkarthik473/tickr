@@ -3,7 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const Alpaca = require('@alpacahq/alpaca-trade-api');
-const AlpacaWebSocketClient = require('../websocket-client');
+// const AlpacaWebSocketClient = require('../websocket-client'); // Removed - file deleted
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -1388,13 +1388,18 @@ router.get('/transactions', authenticateToken, async (req, res) => {
 // Initialize WebSocket client for real-time data
 let wsClient = null;
 
-// Initialize WebSocket connection
+// Initialize WebSocket connection (stub - websocket-client.js removed)
 const initializeWebSocket = () => {
   if (!wsClient) {
-    wsClient = new AlpacaWebSocketClient();
-    wsClient.connect().catch(error => {
-      console.error(`[${getTimestamp()}] ❌ Failed to initialize WebSocket:`, error);
-    });
+    // Return stub object so getStockQuote falls back to REST API
+    wsClient = {
+      isConnected: false,
+      isAuthenticated: false,
+      getLiveData: () => null,
+      getCurrentPrice: () => null,
+      getCurrentVolume: () => null,
+      getStatus: () => ({ connected: false, authenticated: false, message: 'WebSocket client removed' })
+    };
   }
   return wsClient;
 };
