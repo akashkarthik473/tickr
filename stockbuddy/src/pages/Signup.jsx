@@ -17,16 +17,21 @@ const SignUp = ({ setIsLoggedIn }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submitted, preventing default behavior');
+    const registrationData = { 
+      email, 
+      password, 
+      name: name || email.split('@')[0],
+      username 
+    };
+    console.log('Form data:', registrationData);
     setError("");
     setIsLoading(true);
 
     try {
-      const response = await api.register({ 
-        email, 
-        password, 
-        name: name || email.split('@')[0],
-        username 
-      });
+      console.log('Calling API...');
+      const response = await api.register(registrationData);
+      console.log('API response:', response);
       
       if (response.success) {
         // Store the JWT token
@@ -38,10 +43,28 @@ const SignUp = ({ setIsLoggedIn }) => {
         // Redirect to dashboard
         navigate("/dashboard");
       } else {
-        setError(response.message || 'Registration failed');
+        // More user-friendly error messages
+        if (response.message?.includes('already registered')) {
+          setError('This email is already registered. Please try logging in instead, or use a different email address.');
+        } else if (response.message?.includes('username')) {
+          setError('Username is already taken. Please choose a different username.');
+        } else if (response.message?.includes('required')) {
+          setError('Please fill in all required fields.');
+        } else if (response.message?.includes('invalid')) {
+          setError('Please check your input and try again.');
+        } else {
+          setError(response.message || 'Registration failed. Please try again.');
+        }
       }
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      console.error('Signup error:', err);
+      if (err.message?.includes('400')) {
+        setError('Registration failed. Please check that all fields are filled correctly.');
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        setError('Unable to connect to the server. Please check your internet connection and try again.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

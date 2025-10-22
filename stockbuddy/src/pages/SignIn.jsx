@@ -15,22 +15,41 @@ function SignIn({ setIsLoggedIn }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submitted, preventing default behavior');
+    console.log('Form data:', { emailOrUsername, password });
     setIsLoading(true);
     setError("");
 
     try {
+      console.log('Calling API...');
       const response = await api.login({ emailOrUsername, password });
+      console.log('API response:', response);
       
       if (response.success) {
         localStorage.setItem('token', response.token);
         setIsLoggedIn(true);
         navigate('/dashboard');
       } else {
-        setError(response.message || 'Login failed');
+        // More user-friendly error messages
+        if (response.message?.includes('Invalid credentials')) {
+          setError('Invalid email/username or password. Please check your credentials and try again.');
+        } else if (response.message?.includes('not found')) {
+          setError('No account found with this email/username. Please sign up first.');
+        } else if (response.message?.includes('required')) {
+          setError('Please enter both email/username and password.');
+        } else {
+          setError(response.message || 'Login failed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('Login failed. Please try again.');
+      if (error.message?.includes('400')) {
+        setError('Login failed. Please check that all fields are filled correctly.');
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        setError('Unable to connect to the server. Please check your internet connection and try again.');
+      } else {
+        setError('Login failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

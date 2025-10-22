@@ -65,7 +65,7 @@
     "password": "$2b$10$..Y.asc54sHORO7Phq2xLerKuy2HHWD9ToHhGZryHsKHkrrzgXnvC",
     "name": "Test User",
     "createdAt": "2025-10-22T05:06:25.064Z",
-    "lastLogin": "2025-10-22T05:06:25.734Z",
+    "lastLogin": "2025-10-22T05:28:10.959Z",
     "portfolio": {
       "balance": 10000,
       "positions": [],
@@ -182,5 +182,140 @@
       "lessonAttempts": {}
     },
     "purchasedItems": []
+  },
+  "user_1761110377942_yj0b838af": {
+    "id": "user_1761110377942_yj0b838af",
+    "email": "brandnew@example.com",
+    "username": "brandnew123",
+    "password": "$2b$10$4t/gbleWMfm34G7L9H6tauoxjEQl.xWi8KjNVGbDrOaK9EGeRCJli",
+    "name": "Brand New User",
+    "createdAt": "2025-10-22T05:19:37.942Z",
+    "lastLogin": "2025-10-22T05:19:37.942Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
+  },
+  "user_1761110508926_e4lu87jj3": {
+    "id": "user_1761110508926_e4lu87jj3",
+    "email": "testuser2@example.com",
+    "username": "testuser2",
+    "password": "$2b$10$iiJ.9tY0eYRgIhl5oyMh0O1XGbDm2A9c8tSr7KUVuwwvylpUXtsSO",
+    "name": "Test User 2",
+    "createdAt": "2025-10-22T05:21:48.926Z",
+    "lastLogin": "2025-10-22T05:21:48.926Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
+  },
+  "user_1761110522375_ioyfan90p": {
+    "id": "user_1761110522375_ioyfan90p",
+    "email": "testuser3@example.com",
+    "username": "testuser3",
+    "password": "$2b$10$R6YGEZuxdjdsLNULtgW.w.HKFeKOxtVAWUP/qZHEtWpy80jjSmwlG",
+    "name": "Test User 3",
+    "createdAt": "2025-10-22T05:22:02.375Z",
+    "lastLogin": "2025-10-22T05:22:02.375Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
+  },
+  "user_1761110591394_y1xgsgt0u": {
+    "id": "user_1761110591394_y1xgsgt0u",
+    "email": "r.vudatha0101@gmail.com",
+    "username": "rvudatha",
+    "password": "$2b$10$V5vsr28i7YNT8DyzS79qbuEdR4EyPRe83HmwklhZl8xAwqxK.2S4W",
+    "name": "ritvik v",
+    "createdAt": "2025-10-22T05:23:11.394Z",
+    "lastLogin": "2025-10-22T05:28:48.524Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": [],
+    "learningPreferences": {
+      "dailyGoal": 3,
+      "notifications": true,
+      "difficulty": "auto"
+    }
+  },
+  "user_1761110972112_y5uk2dzyh": {
+    "id": "user_1761110972112_y5uk2dzyh",
+    "email": "jdwadawd@gmail.com",
+    "username": "tawdwaud",
+    "password": "$2b$10$zCLmJk//PZhv5VzVDhS0Le5xn5IUPCwdxVsVhIpXE5bzaabPU2GmW",
+    "name": "ritvik v",
+    "createdAt": "2025-10-22T05:29:32.112Z",
+    "lastLogin": "2025-10-22T05:29:32.112Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": [],
+    "learningPreferences": {
+      "dailyGoal": 3,
+      "notifications": true,
+      "difficulty": "auto"
+    }
   }
 }

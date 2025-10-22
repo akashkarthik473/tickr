@@ -72,7 +72,7 @@ router.post('/register', async (req, res) => {
     if (existingUserByEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Email already registered'
+        message: 'Email already registered. This email may be associated with a Google account. Please try logging in instead, or use a different email address.'
       });
     }
 
@@ -80,7 +80,7 @@ router.post('/register', async (req, res) => {
     if (existingUserByUsername) {
       return res.status(400).json({
         success: false,
-        message: 'Username already taken'
+        message: 'Username already taken. Please choose a different username.'
       });
     }
 
@@ -173,7 +173,7 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Invalid email/username or password. Please check your credentials and try again.'
       });
     }
 
@@ -182,7 +182,7 @@ router.post('/login', async (req, res) => {
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Invalid email/username or password. Please check your credentials and try again.'
       });
     }
 
@@ -537,7 +537,7 @@ router.put('/profile', async (req, res) => {
       if (existingUserByUsername) {
         return res.status(400).json({
           success: false,
-          message: 'Username already taken'
+          message: 'Username already taken. Please choose a different username.'
         });
       }
     }
@@ -548,7 +548,7 @@ router.put('/profile', async (req, res) => {
       if (existingUserByEmail) {
         return res.status(400).json({
           success: false,
-          message: 'Email already registered'
+          message: 'Email already registered. This email may be associated with a Google account. Please try logging in instead, or use a different email address.'
         });
       }
     }
