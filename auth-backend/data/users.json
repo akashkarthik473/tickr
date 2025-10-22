@@ -57,5 +57,130 @@
       "dailyGoal": 3,
       "notifications": true
     }
+  },
+  "user_1761109585064_9kqm4gpk1": {
+    "id": "user_1761109585064_9kqm4gpk1",
+    "email": "test@example.com",
+    "username": "testuser",
+    "password": "$2b$10$..Y.asc54sHORO7Phq2xLerKuy2HHWD9ToHhGZryHsKHkrrzgXnvC",
+    "name": "Test User",
+    "createdAt": "2025-10-22T05:06:25.064Z",
+    "lastLogin": "2025-10-22T05:06:25.734Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
+  },
+  "user_1761109719274_51aio714n": {
+    "id": "user_1761109719274_51aio714n",
+    "email": "ritvikvudatha@gmail.com",
+    "username": "ritvik",
+    "password": "$2b$10$.F./GKZVHUY768aAk81uS.9GK6wGYT3DgDOHiiRXlLpTZgsDQr2AS",
+    "name": "ritvik v",
+    "createdAt": "2025-10-22T05:08:39.274Z",
+    "lastLogin": "2025-10-22T05:08:39.274Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
+  },
+  "user_1761109885576_wqa0llksg": {
+    "id": "user_1761109885576_wqa0llksg",
+    "email": "newuser@example.com",
+    "username": "newuser123",
+    "password": "$2b$10$0QIRziv7H7wgRkbjp69LkuUs/imvVOrT22VbHgrMelXDBon7LlmIC",
+    "name": "New User",
+    "createdAt": "2025-10-22T05:11:25.576Z",
+    "lastLogin": "2025-10-22T05:11:25.576Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
+  },
+  "user_1761109895636_e7lc593i1": {
+    "id": "user_1761109895636_e7lc593i1",
+    "email": "frontend@example.com",
+    "username": "frontend123",
+    "password": "$2b$10$It6OuluQkJnLesdFMZZkiOCFf0khJLD1VjiA2eRTSJ710SOc54Y3S",
+    "name": "Frontend User",
+    "createdAt": "2025-10-22T05:11:35.636Z",
+    "lastLogin": "2025-10-22T05:11:35.636Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
+  },
+  "user_1761109912280_we1qqaji9": {
+    "id": "user_1761109912280_we1qqaji9",
+    "email": "testuser@example.com",
+    "username": "testuser123",
+    "password": "$2b$10$/uWW.hWQnLzacC1zeMG6XuscvSJ4QgBEFSN6yaMqVz5VhdjKa/gD2",
+    "name": "Test User",
+    "createdAt": "2025-10-22T05:11:52.280Z",
+    "lastLogin": "2025-10-22T05:11:52.280Z",
+    "portfolio": {
+      "balance": 10000,
+      "positions": [],
+      "totalValue": 10000
+    },
+    "learningProgress": {
+      "xp": 0,
+      "coins": 0,
+      "completedLessons": [],
+      "completedUnitTests": [],
+      "finalTestCompleted": false,
+      "finalTestLastAttempt": null,
+      "unitTestAttempts": {},
+      "lessonAttempts": {}
+    },
+    "purchasedItems": []
   }
 }
