@@ -445,23 +445,40 @@ const getPreviousClose = async (symbol) => {
 
 // Get stock quote using REST API (fallback method)
 const getStockQuoteFromREST = async (symbol) => {
-  const headers = {
-    'APCA-API-KEY-ID': process.env.ALPACA_API_KEY,
-    'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY
-  };
+  try {
+    // Check if Alpaca API keys are configured
+    if (!process.env.ALPACA_API_KEY || !process.env.ALPACA_SECRET_KEY) {
+      throw new Error('Alpaca API keys not configured. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY in your .env file.');
+    }
 
-  // Get current price from latest trade
-  const tradeResponse = await axios.get(`https://data.alpaca.markets/v2/stocks/${symbol}/trades/latest`, {
-    headers
-  });
+    const headers = {
+      'APCA-API-KEY-ID': process.env.ALPACA_API_KEY,
+      'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY
+    };
 
-  const trade = tradeResponse.data;
-  if (!trade || !trade.trade) {
-    throw new Error(`No trade data available for ${symbol}`);
-  }
+    // Get current price from latest trade
+    let tradeResponse;
+    try {
+      tradeResponse = await axios.get(`https://data.alpaca.markets/v2/stocks/${symbol}/trades/latest`, {
+        headers,
+        timeout: 10000 // 10 second timeout
+      });
+    } catch (tradeError) {
+      console.error(`[${getTimestamp()}] ❌ Alpaca API error for ${symbol}:`, tradeError.message);
+      if (tradeError.response) {
+        console.error(`[${getTimestamp()}]    Status: ${tradeError.response.status}`);
+        console.error(`[${getTimestamp()}]    Data:`, tradeError.response.data);
+      }
+      throw new Error(`Failed to fetch trade data for ${symbol}: ${tradeError.message}`);
+    }
 
-  const currentPrice = trade.trade.p;
-  const timestamp = trade.trade.t;
+    const trade = tradeResponse.data;
+    if (!trade || !trade.trade) {
+      throw new Error(`No trade data available for ${symbol}`);
+    }
+
+    const currentPrice = trade.trade.p;
+    const timestamp = trade.trade.t;
 
   // Get daily volume
   const today = new Date();
@@ -512,21 +529,25 @@ const getStockQuoteFromREST = async (symbol) => {
             console.log(`[${getTimestamp()}] ${symbol} (REST API): $${currentPrice} (change: N/A - no historical data) - Volume: ${dailyVolume.toLocaleString()}`);
           }
   
-  // Get company name from Alpaca API
-  const companyName = await getCompanyName(symbol);
-    
+    // Get company name from Alpaca API
+    const companyName = await getCompanyName(symbol);
+      
     return {
       symbol: symbol.toUpperCase(),
-          name: companyName,
+      name: companyName,
       price: currentPrice,
       change: change,
       changePercent: changePercent,
-          volume: dailyVolume,
-          timestamp: timestamp,
-          source: 'rest',
-          hasHistoricalData: change !== null,
-          hasVolumeData: dailyVolume !== null
-        };
+      volume: dailyVolume,
+      timestamp: timestamp,
+      source: 'rest',
+      hasHistoricalData: change !== null,
+      hasVolumeData: dailyVolume !== null
+    };
+  } catch (error) {
+    console.error(`[${getTimestamp()}] ❌ Error in getStockQuoteFromREST for ${symbol}:`, error.message);
+    throw error; // Re-throw to be handled by the route handler
+  }
 };
 
 // AI-powered search stocks with multiple data sources and intelligent matching
@@ -966,18 +987,34 @@ router.get('/portfolio', authenticateToken, async (req, res) => {
 router.get('/quote/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
+    console.log(`[${getTimestamp()}] 📡 Getting quote for ${symbol}...`);
+    
     // Use REST API for individual quotes (works with any stock)
     const quote = await getStockQuoteFromREST(symbol);
     
+    console.log(`[${getTimestamp()}] ✅ Successfully got quote for ${symbol}`);
     res.json({
       success: true,
       quote: quote
     });
   } catch (error) {
-    console.error(`[${getTimestamp()}] Error getting quote:`, error);
+    console.error(`[${getTimestamp()}] ❌ Error getting quote for ${req.params.symbol}:`, error.message);
+    console.error(`[${getTimestamp()}]    Stack:`, error.stack);
+    
+    // Provide more helpful error messages
+    let errorMessage = 'Failed to get stock quote';
+    if (error.message.includes('API keys not configured')) {
+      errorMessage = 'Alpaca API keys not configured. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY in your .env file.';
+    } else if (error.message.includes('Failed to fetch trade data')) {
+      errorMessage = `Unable to fetch real-time data for ${req.params.symbol}. The Alpaca API may be unavailable or your API keys may be invalid.`;
+    } else if (error.message.includes('No trade data available')) {
+      errorMessage = `No trade data available for ${req.params.symbol}. The symbol may be invalid or the market may be closed.`;
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Failed to get stock quote'
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
