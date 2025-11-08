@@ -107,25 +107,25 @@ export default function Shop() {
       case 'booster':
         if (item.effect.type === 'xp_multiplier') {
           const bonusPercent = (item.effect.multiplier - 1) * 100;
-          return `XP Booster activated! You'll get ${bonusPercent}% more XP for the next ${item.effect.lessonsRemaining} lessons.`;
+          return `XP Booster added to your inventory! Activate it when you're ready to earn ${bonusPercent}% more XP for ${item.effect.lessonsRemaining} lessons.`;
         } else if (item.effect.type === 'coin_multiplier') {
           const bonusPercent = (item.effect.multiplier - 1) * 100;
-          return `Coin Doubler activated! You'll get ${bonusPercent}% more coins for the next ${item.effect.lessonsRemaining} lessons.`;
+          return `Coin Doubler added to your inventory! Activate it when you want ${bonusPercent}% more coins for ${item.effect.lessonsRemaining} lessons.`;
         }
-        return 'Booster activated!';
+        return `${item.name} added to your inventory!`;
       case 'utility':
         if (item.effect.type === 'instant_coins') {
-          return `Success! You received ${item.effect.amount} coins instantly!`;
+          return `Coin pack added to your inventory! Activate it from your inventory to receive ${item.effect.amount} coins.`;
         } else if (item.effect.type === 'instant_xp') {
-          return `Success! You received ${item.effect.amount} XP instantly!`;
+          return `XP Bundle added to your inventory! Use it from the inventory screen to receive ${item.effect.amount} XP.`;
         } else if (item.effect.type === 'skip_token') {
-          return `Lesson Skip Token added to your inventory! Use it to skip any lesson while keeping your progress.`;
+          return `Lesson Skip Token added to your inventory! Use it from your inventory whenever you need to skip a lesson.`;
         } else if (item.effect.type === 'streak_freeze') {
-          return `Streak Freeze activated! Your learning streak is protected for ${item.effect.days} days.`;
+          return `Streak Freeze added to your inventory! Use it from the inventory screen to protect your streak for ${item.effect.days} days.`;
         }
-        return `${item.name} purchased successfully!`;
+        return `${item.name} added to your inventory!`;
       default:
-        return 'Item purchased successfully!';
+        return 'Item added to your inventory!';
     }
   };
 

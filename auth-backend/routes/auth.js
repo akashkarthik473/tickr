@@ -424,6 +424,27 @@ router.get('/user-data', async (req, res) => {
       });
     }
 
+    const originalPurchases = user.purchasedItems || [];
+    let purchasesUpdated = false;
+    const sanitizedPurchases = originalPurchases.map(purchase => {
+      if (!purchase) return purchase;
+      if (purchase.active && !purchase.consumed) {
+        purchasesUpdated = true;
+        return {
+          ...purchase,
+          active: false,
+          activatedAt: null
+        };
+      }
+      return purchase;
+    });
+
+    if (purchasesUpdated) {
+      user.purchasedItems = sanitizedPurchases;
+      users[user.id] = user;
+      saveUsers(req, users);
+    }
+
     res.json({
       success: true,
       portfolio: user.portfolio || {
@@ -441,7 +462,10 @@ router.get('/user-data', async (req, res) => {
         unitTestAttempts: {},
         lessonAttempts: {}
       },
-      purchasedItems: user.purchasedItems || []
+      purchasedItems: user.purchasedItems || [],
+      skipTokens: user.skipTokens || 0,
+      streakFreezes: user.streakFreezes || 0,
+      activeEffects: user.activeEffects || {}
     });
   } catch (error) {
     console.error('User data error:', error);
