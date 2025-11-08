@@ -3,7 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const Alpaca = require('@alpacahq/alpaca-trade-api');
-// const AlpacaWebSocketClient = require('../websocket-client'); // Commented out - module not found
+// const AlpacaWebSocketClient = require('../websocket-client'); // Removed - file deleted
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -1358,16 +1358,20 @@ router.get('/transactions', authenticateToken, async (req, res) => {
 // Initialize WebSocket client for real-time data
 let wsClient = null;
 
-// Initialize WebSocket connection (disabled - module not available)
+// Initialize WebSocket connection (stub - websocket-client.js removed)
 const initializeWebSocket = () => {
-  console.log(`[${getTimestamp()}] ⚠️ WebSocket functionality disabled - module not available`);
-  return {
-    isConnected: false,
-    isAuthenticated: false,
-    getLiveData: () => null,
-    getCurrentPrice: () => null,
-    getCurrentVolume: () => null
-  };
+  if (!wsClient) {
+    // Return stub object so getStockQuote falls back to REST API
+    wsClient = {
+      isConnected: false,
+      isAuthenticated: false,
+      getLiveData: () => null,
+      getCurrentPrice: () => null,
+      getCurrentVolume: () => null,
+      getStatus: () => ({ connected: false, authenticated: false, message: 'WebSocket client removed' })
+    };
+  }
+  return wsClient;
 };
 
 // Cache for market data to reduce API calls
