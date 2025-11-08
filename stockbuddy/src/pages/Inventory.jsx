@@ -4,33 +4,59 @@ import { api } from '../services/api';
 import { marbleWhite, marbleLightGray, marbleGray, marbleDarkGray, marbleGold } from '../marblePalette';
 import { fontHeading, fontBody } from '../fontPalette';
 
+const defaultInventoryState = {
+  purchasedItems: [],
+  skipTokens: 0,
+  streakFreezes: 0,
+  learningProgress: {
+    xp: 0,
+    coins: 0
+  },
+  activeEffects: {}
+};
+
 export default function Inventory() {
   const navigate = useNavigate();
-  const [userData, setUserData] = useState(null);
+  const [inventoryData, setInventoryData] = useState(defaultInventoryState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [usingItemId, setUsingItemId] = useState(null);
 
   useEffect(() => {
-    fetchUserData();
+    fetchInventory();
   }, []);
 
-  const fetchUserData = async () => {
+  const fetchInventory = async () => {
     setLoading(true);
     setError(null);
+    setMessage(null);
     
     try {
       console.log('🎒 Inventory: Fetching user data...');
-      
-      const userDataResponse = await api.getUserData();
-      console.log('🎒 Inventory: User data received:', userDataResponse);
+      const response = await api.getUserData();
+      console.log('🎒 Inventory: User data received:', response);
 
-      setUserData(userDataResponse);
+      setInventoryData({
+        purchasedItems: response.purchasedItems || [],
+        skipTokens: response.skipTokens || 0,
+        streakFreezes: response.streakFreezes || 0,
+        learningProgress: response.learningProgress || { xp: 0, coins: 0 },
+        activeEffects: response.activeEffects || {}
+      });
     } catch (err) {
       console.error('❌ Inventory: Error fetching data:', err);
       setError(err.message || 'Failed to load inventory data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const resolvePurchaseId = (item) => {
+    if (!item) return undefined;
+    if (item.id) return item.id;
+    if (typeof item.itemId === 'number') return item.itemId.toString();
+    return item.itemId;
   };
 
   const getItemIcon = (itemType, effectType) => {
@@ -52,59 +78,107 @@ export default function Inventory() {
 
   const getItemDescription = (item) => {
     switch (item.effect?.type) {
-      case 'xp_multiplier':
-        const bonusPercent = (item.effect.multiplier - 1) * 100;
-        return `Get ${bonusPercent}% more XP for ${item.effect.lessonsRemaining} lessons`;
-      case 'coin_multiplier':
-        const coinBonusPercent = (item.effect.multiplier - 1) * 100;
-        return `Get ${coinBonusPercent}% more coins for ${item.effect.lessonsRemaining} lessons`;
+      case 'xp_multiplier': {
+        const bonusPercent = Math.round((item.effect.multiplier - 1) * 100);
+        return `Get ${bonusPercent}% more XP for ${item.effect.lessonsRemaining} lessons.`;
+      }
+      case 'coin_multiplier': {
+        const bonusPercent = Math.round((item.effect.multiplier - 1) * 100);
+        return `Get ${bonusPercent}% more coins for ${item.effect.lessonsRemaining} lessons.`;
+      }
       case 'instant_xp':
-        return `Instantly received ${item.effect.amount} XP`;
+        return `Grant ${item.effect.amount} XP when activated.`;
       case 'skip_token':
-        return `Skip any lesson while maintaining progress`;
+        return `Skip any lesson while maintaining progress.`;
       case 'streak_freeze':
-        return `Protect your learning streak for ${item.effect.days} days`;
+        return `Protect your learning streak for ${item.effect.days} days.`;
       case 'instant_coins':
-        return `Instantly received ${item.effect.amount} coins`;
+        return `Grant ${item.effect.amount} coins when activated.`;
       default:
         return 'Special item effect';
     }
   };
 
-  const getItemStatus = (item) => {
-    if (item.itemType === 'booster') {
-      return item.active ? 'Active' : 'Expired';
-    } else if (item.itemType === 'utility') {
-      switch (item.effect?.type) {
-        case 'skip_token':
-          return `Uses: ${userData?.skipTokens || 0}`;
-        case 'streak_freeze':
-          return `Days: ${userData?.streakFreezes || 0}`;
-        default:
-          return 'Used';
-      }
+  const formatDurationLabel = (durationMs = 0) => {
+    if (!durationMs) return '';
+    const oneDay = 24 * 60 * 60 * 1000;
+    if (durationMs % oneDay === 0) {
+      const days = Math.round(durationMs / oneDay);
+      return `${days} day${days === 1 ? '' : 's'}`;
     }
-    return 'Available';
+    const hours = Math.round(durationMs / (60 * 60 * 1000));
+    if (hours >= 1) {
+      return `${hours} hour${hours === 1 ? '' : 's'}`;
+    }
+    const minutes = Math.max(1, Math.round(durationMs / (60 * 1000)));
+    return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  };
+
+  const getItemStatus = (item) => {
+    if (!item) return 'Ready';
+
+    if (item.active) {
+      if (item.effect?.type === 'streak_freeze') {
+        return `Activated for ${item.effect.days} day${item.effect.days === 1 ? '' : 's'}`;
+      }
+      if (item.effect?.duration) {
+        return `Activated for ${formatDurationLabel(item.effect.duration)}`;
+      }
+      if (item.effect?.lessonsRemaining) {
+        return `Activated · ${item.effect.lessonsRemaining} lessons remaining`;
+      }
+      return 'Activated';
+    }
+
+    if (item.consumed) {
+      return 'Used';
+    }
+
+    return 'Ready to use';
   };
 
   const getStatusColor = (item) => {
-    if (item.itemType === 'booster') {
-      return item.active ? '#22c55e' : '#ef4444';
-    } else if (item.itemType === 'utility') {
-      switch (item.effect?.type) {
-        case 'skip_token':
-        case 'streak_freeze':
-          return '#22c55e';
-        default:
-          return '#6b7280';
-      }
-    }
-    return '#6b7280';
+    if (!item) return marbleDarkGray;
+    if (item.active) return '#22c55e';
+    if (item.consumed) return '#6b7280';
+    return marbleDarkGray;
   };
 
-  const handleUseSkipToken = () => {
-    // TODO: Implement skip token usage
-    alert('Skip token usage will be implemented in the lesson system!');
+  const isItemUsable = (item) => {
+    const purchaseId = resolvePurchaseId(item);
+    if (!purchaseId) return false;
+    if (item?.consumed) return false;
+    if (item?.active) return false;
+    return true;
+  };
+
+  const handleUseItem = async (purchaseId) => {
+    setError(null);
+    setMessage(null);
+    setUsingItemId(purchaseId);
+
+    try {
+      const response = await api.useInventoryItem(purchaseId);
+      console.log('🎒 Inventory: Item used response:', response);
+
+      setInventoryData(prev => ({
+        purchasedItems: prev.purchasedItems.map(item =>
+          resolvePurchaseId(item) === purchaseId ? response.purchase : item
+        ),
+        skipTokens: response.skipTokens ?? prev.skipTokens,
+        streakFreezes: response.streakFreezes ?? prev.streakFreezes,
+        learningProgress: response.learningProgress ?? prev.learningProgress,
+        activeEffects: response.activeEffects ?? prev.activeEffects
+      }));
+
+      const activatedName = response.purchase?.itemName || 'Ability';
+      setMessage(response.message || `${activatedName} activated!`);
+    } catch (err) {
+      console.error('❌ Inventory: Error using item:', err);
+      setError(err.message || 'Failed to use item');
+    } finally {
+      setUsingItemId(null);
+    }
   };
 
   if (loading) {
@@ -122,7 +196,7 @@ export default function Inventory() {
     );
   }
 
-  if (error) {
+  if (error && inventoryData.purchasedItems.length === 0) {
     return (
       <div style={{
         minHeight: "100vh",
@@ -136,7 +210,7 @@ export default function Inventory() {
       }}>
         <div style={{ color: marbleDarkGray, fontSize: "18px" }}>❌ {error}</div>
         <button
-          onClick={fetchUserData}
+          onClick={fetchInventory}
           style={{
             backgroundColor: marbleGold,
             color: marbleDarkGray,
@@ -154,7 +228,10 @@ export default function Inventory() {
     );
   }
 
-  const purchasedItems = userData?.purchasedItems || [];
+  const purchasedItems = inventoryData.purchasedItems || [];
+  const skipTokens = inventoryData.skipTokens || 0;
+  const streakFreezes = inventoryData.streakFreezes || 0;
+  const learningProgress = inventoryData.learningProgress || { xp: 0, coins: 0 };
 
   return (
     <div style={{
@@ -204,7 +281,7 @@ export default function Inventory() {
             color: marbleGray,
             marginBottom: "24px"
           }}>
-            Manage your purchased items and special abilities
+            Manage your purchased items and activate them when you're ready.
           </p>
 
           {/* Inventory Stats */}
@@ -228,7 +305,7 @@ export default function Inventory() {
                   fontWeight: "bold",
                   color: marbleDarkGray
                 }}>
-                  {userData?.skipTokens || 0}
+                  {skipTokens}
                 </div>
                 <div style={{
                   fontSize: "14px",
@@ -254,13 +331,39 @@ export default function Inventory() {
                   fontWeight: "bold",
                   color: marbleDarkGray
                 }}>
-                  {userData?.streakFreezes || 0}
+                  {streakFreezes}
                 </div>
                 <div style={{
                   fontSize: "14px",
                   color: marbleGray
                 }}>
                   Streak Freeze Days
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: marbleWhite,
+              borderRadius: "12px",
+              padding: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px"
+            }}>
+              <div style={{ fontSize: "24px" }}>⭐</div>
+              <div>
+                <div style={{
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: marbleDarkGray
+                }}>
+                  {learningProgress.xp || 0} XP
+                </div>
+                <div style={{
+                  fontSize: "14px",
+                  color: marbleGray
+                }}>
+                  Current XP
                 </div>
               </div>
             </div>
@@ -274,7 +377,18 @@ export default function Inventory() {
         margin: "0 auto",
         padding: "48px 24px"
       }}>
-        {/* Items Grid */}
+        {(message || error) && (
+          <div style={{
+            marginBottom: "24px",
+            padding: "12px 16px",
+            borderRadius: "12px",
+            backgroundColor: message ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: message ? '#166534' : '#991b1b'
+          }}>
+            {message || error}
+          </div>
+        )}
+
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
@@ -301,7 +415,7 @@ export default function Inventory() {
               }}>
                 No items in inventory
               </h3>
-              <p>Visit the shop to purchase items and they'll appear here.</p>
+              <p>Visit the shop to purchase items and they’ll appear here.</p>
               <button
                 onClick={() => navigate('/shop')}
                 style={{
@@ -320,9 +434,11 @@ export default function Inventory() {
               </button>
             </div>
           ) : (
-            purchasedItems.map((item, index) => (
+            purchasedItems
+              .sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))
+              .map((item) => (
               <div
-                key={index}
+                key={resolvePurchaseId(item) || `${item.itemId}-${item.purchasedAt}`}
                 style={{
                   backgroundColor: marbleLightGray,
                   borderRadius: "20px",
@@ -384,9 +500,16 @@ export default function Inventory() {
                     {getItemStatus(item)}
                   </div>
 
-                  {item.effect?.type === 'skip_token' && (userData?.skipTokens || 0) > 0 && (
+                  {(() => {
+                    const purchaseId = resolvePurchaseId(item);
+                    const activatable = Boolean(purchaseId) && isItemUsable(item);
+                    if (!activatable) {
+                      return null;
+                    }
+                    return (
                     <button
-                      onClick={handleUseSkipToken}
+                      onClick={() => handleUseItem(purchaseId)}
+                      disabled={usingItemId === purchaseId}
                       style={{
                         backgroundColor: marbleGold,
                         color: marbleDarkGray,
@@ -395,12 +518,14 @@ export default function Inventory() {
                         borderRadius: "8px",
                         fontSize: "14px",
                         fontWeight: "600",
-                        cursor: "pointer"
+                        cursor: usingItemId === purchaseId ? "not-allowed" : "pointer",
+                        opacity: usingItemId === purchaseId ? 0.7 : 1
                       }}
                     >
-                      Use Token
+                      {usingItemId === purchaseId ? 'Activating...' : 'Activate'}
                     </button>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 <div style={{
@@ -408,9 +533,13 @@ export default function Inventory() {
                   top: "12px",
                   right: "12px",
                   fontSize: "12px",
-                  color: marbleGray
+                  color: marbleGray,
+                  textAlign: "right"
                 }}>
-                  {new Date(item.purchasedAt).toLocaleDateString()}
+                  <div>Purchased: {new Date(item.purchasedAt).toLocaleDateString()}</div>
+                  {item.activatedAt && (
+                    <div>Activated: {new Date(item.activatedAt).toLocaleDateString()}</div>
+                  )}
                 </div>
               </div>
             ))

@@ -250,50 +250,21 @@ router.post('/purchase', authenticateToken, (req, res) => {
 
     // Create purchase record
     const purchase = {
+      id: Date.now().toString(),
       itemId: item.id,
       itemName: item.name,
       itemType: item.type,
       price: item.price,
       purchasedAt: new Date().toISOString(),
       effect: item.effect,
-      active: true
+      active: false,
+      consumed: false,
+      activatedAt: null,
+      consumedAt: null
     };
 
     // Add to purchased items
     user.purchasedItems.push(purchase);
-
-    // Apply item effects based on type
-    if (item.type === 'booster') {
-      if (!user.activeEffects) {
-        user.activeEffects = {};
-      }
-      
-      // Store the active effect
-      const effectKey = `${item.effect.type}_${Date.now()}`;
-      user.activeEffects[effectKey] = {
-        ...item.effect,
-        expiresAt: new Date(Date.now() + item.effect.duration).toISOString(),
-        purchasedAt: purchase.purchasedAt
-      };
-      console.log(`[${getTimestamp()}] ⚡ Shop: Activated ${item.effect.type} effect for user ${req.user.userId}`);
-    } else if (item.type === 'utility') {
-      // Handle instant effects
-      if (item.effect.type === 'instant_coins') {
-        user.learningProgress.coins += item.effect.amount;
-        console.log(`[${getTimestamp()}] 💰 Shop: Granted ${item.effect.amount} instant coins to user ${req.user.userId}`);
-      } else if (item.effect.type === 'instant_xp') {
-        user.learningProgress.xp = (user.learningProgress.xp || 0) + item.effect.amount;
-        console.log(`[${getTimestamp()}] 🎁 Shop: Granted ${item.effect.amount} instant XP to user ${req.user.userId}`);
-      } else if (item.effect.type === 'skip_token') {
-        if (!user.skipTokens) user.skipTokens = 0;
-        user.skipTokens += item.effect.uses;
-        console.log(`[${getTimestamp()}] ⏭️ Shop: Granted ${item.effect.uses} skip token(s) to user ${req.user.userId}`);
-      } else if (item.effect.type === 'streak_freeze') {
-        if (!user.streakFreezes) user.streakFreezes = 0;
-        user.streakFreezes += item.effect.days;
-        console.log(`[${getTimestamp()}] 🛡️ Shop: Granted ${item.effect.days} streak freeze days to user ${req.user.userId}`);
-      }
-    }
 
     // Save updated user data
     saveUsers(req, users);
@@ -311,6 +282,169 @@ router.post('/purchase', authenticateToken, (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to process purchase'
+    });
+  }
+});
+
+// Use a purchased item
+router.post('/use', authenticateToken, (req, res) => {
+  const { purchaseId } = req.body;
+
+  console.log(`[${getTimestamp()}] 🎒 Shop: User ${req.user.userId} attempting to use purchase ${purchaseId}`);
+
+  try {
+    if (!purchaseId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Purchase ID is required'
+      });
+    }
+
+    const users = getUsers(req);
+    const user = users[req.user.userId];
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.purchasedItems || user.purchasedItems.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No purchased items found'
+      });
+    }
+
+    let purchase = user.purchasedItems.find(p => p.id === purchaseId);
+
+    if (!purchase) {
+      purchase = user.purchasedItems.find(p => {
+        if (p.id) return false;
+        if (p.consumed) return false;
+        const candidateId = typeof p.itemId === 'number' ? p.itemId.toString() : p.itemId;
+        return candidateId === purchaseId;
+      });
+    }
+
+    if (!purchase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Purchase not found'
+      });
+    }
+
+    if (!purchase.id) {
+      purchase.id = Date.now().toString();
+    }
+
+    if (purchase.consumed) {
+      return res.status(400).json({
+        success: false,
+        message: 'This item has already been used'
+      });
+    }
+
+    const now = new Date().toISOString();
+
+    if (purchase.itemType === 'booster') {
+      if (!user.activeEffects) {
+        user.activeEffects = {};
+      }
+
+      const effect = purchase.effect || {};
+      if (!effect.duration) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid booster configuration'
+        });
+      }
+
+      const effectKey = `${effect.type}_${Date.now()}`;
+      user.activeEffects[effectKey] = {
+        ...effect,
+        expiresAt: new Date(Date.now() + effect.duration).toISOString(),
+        purchasedAt: purchase.purchasedAt,
+        activatedAt: now
+      };
+
+      purchase.active = true;
+      purchase.consumed = true;
+      purchase.activatedAt = now;
+      purchase.consumedAt = now;
+
+      console.log(`[${getTimestamp()}] ⚡ Shop: Activated booster ${effect.type} for user ${req.user.userId}`);
+    } else if (purchase.itemType === 'utility') {
+      const effect = purchase.effect || {};
+
+      switch (effect.type) {
+        case 'instant_xp': {
+          if (!user.learningProgress) {
+            user.learningProgress = { xp: 0, coins: 0 };
+          }
+          user.learningProgress.xp = (user.learningProgress.xp || 0) + (effect.amount || 0);
+          purchase.consumed = true;
+          purchase.consumedAt = now;
+          console.log(`[${getTimestamp()}] 🎁 Shop: Applied ${effect.amount} XP to user ${req.user.userId}`);
+          break;
+        }
+        case 'instant_coins': {
+          if (!user.learningProgress) {
+            user.learningProgress = { xp: 0, coins: 0 };
+          }
+          user.learningProgress.coins = (user.learningProgress.coins || 0) + (effect.amount || 0);
+          purchase.consumed = true;
+          purchase.consumedAt = now;
+          console.log(`[${getTimestamp()}] 💰 Shop: Applied ${effect.amount} coins to user ${req.user.userId}`);
+          break;
+        }
+        case 'skip_token': {
+          if (!user.skipTokens) user.skipTokens = 0;
+          user.skipTokens += effect.uses || 1;
+          purchase.consumed = true;
+          purchase.consumedAt = now;
+          console.log(`[${getTimestamp()}] ⏭️ Shop: Granted skip token to user ${req.user.userId}`);
+          break;
+        }
+        case 'streak_freeze': {
+          if (!user.streakFreezes) user.streakFreezes = 0;
+          user.streakFreezes += effect.days || 0;
+          purchase.consumed = true;
+          purchase.consumedAt = now;
+          console.log(`[${getTimestamp()}] 🛡️ Shop: Granted streak freeze days to user ${req.user.userId}`);
+          break;
+        }
+        default: {
+          return res.status(400).json({
+            success: false,
+            message: 'Unsupported utility item type'
+          });
+        }
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Unsupported item type'
+      });
+    }
+
+    saveUsers(req, users);
+
+    res.json({
+      success: true,
+      message: 'Item used successfully',
+      purchase,
+      skipTokens: user.skipTokens || 0,
+      streakFreezes: user.streakFreezes || 0,
+      learningProgress: user.learningProgress || { xp: 0, coins: 0 },
+      activeEffects: user.activeEffects || {}
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] ❌ Shop: Error using item:`, error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to use item'
     });
   }
 });
