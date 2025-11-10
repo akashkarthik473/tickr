@@ -3,6 +3,12 @@
 # Quick Start Script for Tickr
 # This script provides a simple way to start Tickr services
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BACKEND_DIR="$PROJECT_ROOT/auth-backend"
+FRONTEND_DIR="$PROJECT_ROOT/stockbuddy"
+LAUNCH_MANAGER="$SCRIPT_DIR/launch_tickr.sh"
+
 echo "🚀 Tickr Quick Start"
 echo "==================="
 echo ""
@@ -19,23 +25,31 @@ read -p "Enter choice (1-5): " choice
 case $choice in
     1)
         echo "Starting backend..."
-        cd "/Users/mac/Desktop/ /tickr/auth-backend" && node server.js
+        echo "Installing backend dependencies..."
+        cd "$BACKEND_DIR" && npm install
+        cd "$BACKEND_DIR" && node server.js
         ;;
     2)
         echo "Starting frontend..."
-        cd "/Users/mac/Desktop/ /tickr/stockbuddy" && npm run dev
+        echo "Installing frontend dependencies..."
+        cd "$FRONTEND_DIR" && npm install
+        cd "$FRONTEND_DIR" && npm run dev
         ;;
     3)
         echo "Starting both services..."
         echo "Backend starting in background..."
-        cd "/Users/mac/Desktop/ /tickr/auth-backend" && nohup node server.js > ../logs/backend.log 2>&1 &
+        echo "Installing backend dependencies..."
+        cd "$BACKEND_DIR" && npm install
+        cd "$BACKEND_DIR" && nohup node server.js > ../logs/backend.log 2>&1 &
         sleep 2
         echo "Frontend starting..."
-        cd "/Users/mac/Desktop/ /tickr/stockbuddy" && npm run dev
+        echo "Installing frontend dependencies..."
+        cd "$FRONTEND_DIR" && npm install
+        cd "$FRONTEND_DIR" && npm run dev
         ;;
     4)
         echo "Opening Launch Manager..."
-        "/Users/mac/Desktop/ /tickr/startups/mac/launch_tickr.sh"
+        bash "$LAUNCH_MANAGER"
         ;;
     5)
         echo "Goodbye!"

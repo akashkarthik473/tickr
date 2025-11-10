@@ -14,12 +14,12 @@
 - [ ] Add Storybook (or Vite preview stories) for the new components to allow visual regression checks.
 
 ## Project 3 – Testing & CI Baseline
-- [ ] Configure Jest (or Vitest) for `auth-backend/` and add smoke tests for auth + trading routes.
-- [ ] Enable Vitest + React Testing Library for `stockbuddy/`; add smoke tests for `Inventory` and `Shop` screens.
-- [ ] Add `npm run lint` & `npm run test` scripts in root `package.json`, wire to GitHub Actions (or chosen CI) for PR gating.
+- [x] Configure Jest (or Vitest) for `auth-backend/` and add smoke tests for auth + trading routes.
+- [x] Enable Vitest + React Testing Library for `stockbuddy/`; add smoke tests for `Inventory` and `Shop` screens.
+- [x] Add `npm run lint` & `npm run test` scripts in root `package.json`, wire to GitHub Actions (or chosen CI) for PR gating.
 
 ## Project 4 – Auth & Config Hardening (Quick Wins)
-- [ ] Move JWT secret, email credentials, and third-party API keys into `.env` with startup validation.
-- [ ] Introduce rate limiting (e.g., express-rate-limit) on `/auth/login` and `/auth/google`.
-- [ ] Log auth attempts (success + failure) to a rotating log file for basic auditability.
-- [ ] Draft a migration note outlining options to move user storage off plaintext JSON (SQLite/Prisma proposal).
+- [x] Move JWT secret, email credentials, and third-party API keys into `.env` with startup validation.
+- [x] Introduce rate limiting (e.g., express-rate-limit) on `/auth/login` and `/auth/google`.
+- [x] Log auth attempts (success + failure) to a rotating log file for basic auditability.
+- [x] Draft a migration note outlining options to move user storage off plaintext JSON (SQLite/Prisma proposal).

@@ -34,7 +34,7 @@ A simplified script for quick service management.
 1. Open Terminal
 2. Navigate to the scripts directory:
    ```bash
-   cd "/Users/mac/Desktop/ /tickr/startups/mac"
+   cd "/Users/joejenknson/tickr/startups/mac"
    ```
 3. Run the launch manager:
    ```bash
@@ -46,7 +46,7 @@ A simplified script for quick service management.
 1. Open Terminal
 2. Navigate to the scripts directory:
    ```bash
-   cd "/Users/mac/Desktop/ /tickr/startups/mac"
+   cd "/Users/joejenknson/tickr/startups/mac"
    ```
 3. Run the quick start script:
    ```bash
@@ -76,8 +76,8 @@ A simplified script for quick service management.
 ## Logs
 
 Logs are automatically saved to:
-- Backend logs: `/Users/mac/Desktop/ /tickr/logs/backend.log`
-- Frontend logs: `/Users/mac/Desktop/ /tickr/logs/frontend.log`
+- Backend logs: `/Users/joejenknson/tickr/logs/backend.log`
+- Frontend logs: `/Users/joejenknson/tickr/logs/frontend.log`
 
 ## Troubleshooting
 
@@ -88,11 +88,11 @@ Logs are automatically saved to:
 4. Make sure all dependencies are installed:
    ```bash
    # Backend dependencies
-   cd "/Users/mac/Desktop/ /tickr/auth-backend"
+   cd "/Users/joejenknson/tickr/auth-backend"
    npm install
    
    # Frontend dependencies
-   cd "/Users/mac/Desktop/ /tickr/stockbuddy"
+   cd "/Users/joejenknson/tickr/stockbuddy"
    npm install
    ```
 

@@ -120,11 +120,14 @@ npm install
 Create a `.env` file in `auth-backend/`:
 ```env
 PORT=5001
-JWT_SECRET=your-secret-key
+JWT_SECRET=replace-with-strong-secret
 ALPACA_API_KEY=your-alpaca-key
 ALPACA_SECRET_KEY=your-alpaca-secret
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
+EMAIL_USER=service-account@example.com
+EMAIL_PASSWORD=super-secret-password
+FRONTEND_URL=http://localhost:5173
 ```
 
 5. **Start the development servers**
@@ -182,6 +185,17 @@ The application is actively under development with a focus on:
 ## 📝 License
 
 This project is private and proprietary.
+
+## 🗄️ Data Storage Migration Note
+
+Current authentication and trading data live in JSON files under `auth-backend/data/`, which is ideal for demos but brittle for growth. We recommend adopting SQLite as the first persistent store: it runs locally without external services and gives us transactional safety for purchases and portfolio updates. Prisma can sit on top of SQLite to provide schema migrations, type-safe queries, and an easy upgrade path to PostgreSQL when we outgrow a single-file database. The proposed migration plan is:
+
+1. Define Prisma models that mirror our existing `users`, `portfolios`, and `transactions` JSON structures.
+2. Ship a CLI script that reads the JSON files and seeds the SQLite database.
+3. Swap route handlers to read/write via Prisma while keeping the seeding script for QA resets.
+4. When ready for multi-user deployments, flip Prisma's datasource to PostgreSQL—no route changes required.
+
+This approach removes plaintext storage, unlocks relational constraints, and positions us for future analytics without a ground-up rewrite.
 
 ## 👤 Author
 

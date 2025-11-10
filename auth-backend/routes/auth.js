@@ -2,10 +2,49 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { OAuth2Client } = require('google-auth-library');
 const { sendGoalReminder, sendWelcomeEmail } = require('../services/emailService');
 
+const JWT_SECRET = process.env.JWT_SECRET;
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const logAuthAttempt = (req, details) => {
+  const logger = req.app?.locals?.authLogger;
+  if (!logger) {
+    return;
+  }
+
+  const entry = {
+    timestamp: new Date().toISOString(),
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    ...details
+  };
+
+  logger.write(`${JSON.stringify(entry)}\n`);
+};
+
+const rateLimitHandler = (req, res, next, options) => {
+  logAuthAttempt(req, {
+    action: 'rate-limit',
+    success: false,
+    identifier: req.body?.emailOrUsername || req.body?.email || 'unknown',
+    message: 'Too many authentication attempts'
+  });
+  res.status(options.statusCode).json({
+    success: false,
+    message: 'Too many attempts. Please try again later.'
+  });
+};
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler
+});
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
@@ -19,7 +58,7 @@ const authenticateToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -46,7 +85,7 @@ const validateUsername = (username) => {
 };
 
 // Register new user
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { email, password, name, username } = req.body;
     
@@ -122,13 +161,19 @@ router.post('/register', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: newUser.id, email: newUser.email, username: newUser.username },
-      process.env.JWT_SECRET || 'your-secret-key',
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     // Send welcome email (don't wait for it to complete)
     sendWelcomeEmail(newUser.email, newUser.name).catch(error => {
       console.error('Failed to send welcome email:', error);
+    });
+
+    logAuthAttempt(req, {
+      action: 'register',
+      success: true,
+      identifier: email
     });
 
     res.json({
@@ -144,6 +189,12 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    logAuthAttempt(req, {
+      action: 'register',
+      success: false,
+      identifier: req.body?.email,
+      message: error.message
+    });
     res.status(500).json({
       success: false,
       message: 'Registration failed'
@@ -152,11 +203,17 @@ router.post('/register', async (req, res) => {
 });
 
 // Login user with email or username
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { emailOrUsername, password } = req.body;
     
     if (!emailOrUsername || !password) {
+      logAuthAttempt(req, {
+        action: 'login',
+        success: false,
+        identifier: emailOrUsername || 'unknown',
+        message: 'Missing credentials'
+      });
       return res.status(400).json({
         success: false,
         message: 'Email/username and password are required'
@@ -171,6 +228,12 @@ router.post('/login', async (req, res) => {
     );
     
     if (!user) {
+      logAuthAttempt(req, {
+        action: 'login',
+        success: false,
+        identifier: emailOrUsername,
+        message: 'User not found'
+      });
       return res.status(401).json({
         success: false,
         message: 'Invalid email/username or password. Please check your credentials and try again.'
@@ -180,6 +243,12 @@ router.post('/login', async (req, res) => {
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      logAuthAttempt(req, {
+        action: 'login',
+        success: false,
+        identifier: emailOrUsername,
+        message: 'Invalid password'
+      });
       return res.status(401).json({
         success: false,
         message: 'Invalid email/username or password. Please check your credentials and try again.'
@@ -194,9 +263,15 @@ router.post('/login', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, username: user.username },
-      process.env.JWT_SECRET || 'your-secret-key',
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    logAuthAttempt(req, {
+      action: 'login',
+      success: true,
+      identifier: emailOrUsername
+    });
 
     res.json({
       success: true,
@@ -211,6 +286,12 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    logAuthAttempt(req, {
+      action: 'login',
+      success: false,
+      identifier: req.body?.emailOrUsername || 'unknown',
+      message: error.message
+    });
     res.status(500).json({
       success: false,
       message: 'Login failed'
@@ -219,18 +300,24 @@ router.post('/login', async (req, res) => {
 });
 
 // Google OAuth login
-router.post('/google', async (req, res) => {
+router.post('/google', authLimiter, async (req, res) => {
   try {
     console.log('🔍 Google OAuth request received');
     console.log('🔍 Environment variables:', {
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? 'SET' : 'NOT SET',
-      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET'
+      JWT_SECRET: JWT_SECRET ? 'SET' : 'NOT SET'
     });
     
     const { token } = req.body;
     
     if (!token) {
       console.error('❌ No token provided in request body');
+      logAuthAttempt(req, {
+        action: 'google-auth',
+        success: false,
+        identifier: 'google',
+        message: 'Missing token'
+      });
       return res.status(400).json({
         success: false,
         message: 'Google token is required'
@@ -294,12 +381,26 @@ router.post('/google', async (req, res) => {
         purchasedItems: []
       };
       users[userId] = user;
+
+      logAuthAttempt(req, {
+        action: 'google-auth',
+        success: true,
+        identifier: email,
+        message: 'Registered via Google'
+      });
     } else {
       // Update existing user
       console.log('🔍 Updating existing user:', user.id);
       user.lastLogin = new Date().toISOString();
       user.picture = picture;
       users[user.id] = user;
+
+      logAuthAttempt(req, {
+        action: 'google-auth',
+        success: true,
+        identifier: email,
+        message: 'Login via Google'
+      });
     }
 
     console.log('🔍 Saving user data...');
@@ -310,7 +411,7 @@ router.post('/google', async (req, res) => {
     console.log('🔍 Generating JWT token...');
     const jwtToken = jwt.sign(
       { userId: user.id, email: user.email, username: user.username },
-      process.env.JWT_SECRET || 'your-secret-key',
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
     console.log('✅ JWT token generated successfully');
@@ -339,6 +440,12 @@ router.post('/google', async (req, res) => {
   } catch (error) {
     console.error('❌ Google login error:', error);
     console.error('❌ Error stack:', error.stack);
+    logAuthAttempt(req, {
+      action: 'google-auth',
+      success: false,
+      identifier: 'google',
+      message: error.message
+    });
     res.status(500).json({
       success: false,
       message: 'Google login failed'
@@ -358,7 +465,7 @@ router.get('/profile', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -413,7 +520,7 @@ router.get('/user-data', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -488,7 +595,7 @@ router.post('/user-data', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -534,7 +641,7 @@ router.put('/profile', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -619,7 +726,7 @@ router.put('/learning-preferences', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -673,7 +780,7 @@ router.get('/learning-preferences', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -719,7 +826,7 @@ router.get('/export-data', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -786,7 +893,7 @@ router.post('/reset-progress', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
@@ -837,7 +944,7 @@ router.delete('/account', async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const users = getUsers(req);
     const user = users[decoded.userId];
 
