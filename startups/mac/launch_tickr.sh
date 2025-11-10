@@ -13,8 +13,9 @@ CYAN='\033[0;36m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# Project paths
-PROJECT_ROOT="/Users/mac/Desktop/ /tickr"
+# Project paths (resolved relative to this script)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/auth-backend"
 FRONTEND_DIR="$PROJECT_ROOT/stockbuddy"
 
@@ -76,6 +77,9 @@ start_backend() {
     echo -e "${BLUE}Starting backend server...${NC}"
     cd "$BACKEND_DIR" || exit 1
     
+    echo -e "${BLUE}Installing backend dependencies (npm install)...${NC}"
+    npm install
+    
     # Create logs directory if it doesn't exist
     mkdir -p ../logs
     
@@ -116,6 +120,9 @@ start_frontend() {
     
     echo -e "${BLUE}Starting frontend development server...${NC}"
     cd "$FRONTEND_DIR" || exit 1
+    
+    echo -e "${BLUE}Installing frontend dependencies (npm install)...${NC}"
+    npm install
     
     # Create logs directory if it doesn't exist
     mkdir -p ../logs
