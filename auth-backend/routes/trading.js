@@ -3,7 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const Alpaca = require('@alpacahq/alpaca-trade-api');
-const AlpacaWebSocketClient = require('../websocket-client');
+// const AlpacaWebSocketClient = require('../websocket-client'); // Commented out - module not found
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -239,75 +239,8 @@ const getStockQuote = async (symbol) => {
       throw new Error('Alpaca API keys not configured. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY in your .env file.');
     }
 
-    // Define FAANG stocks that use WebSocket
-    const faangStocks = ['META', 'AAPL', 'AMZN', 'NFLX', 'GOOGL'];
-    const isFaangStock = faangStocks.includes(symbol.toUpperCase());
-
-    if (isFaangStock) {
-      // Use WebSocket for FAANG stocks
-      const ws = initializeWebSocket();
-      
-      // Give WebSocket a moment to receive data if it just connected
-      if (ws.isConnected && ws.isAuthenticated) {
-        // Wait a bit for data to arrive if we don't have it yet
-        if (!ws.getLiveData(symbol)) {
-          console.log(`[${getTimestamp()}] ⏳ Waiting for WebSocket data for ${symbol}...`);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-        }
-      }
-      
-      const wsData = ws.getLiveData(symbol);
-      const wsPrice = ws.getCurrentPrice(symbol);
-      const wsVolume = ws.getCurrentVolume(symbol);
-      
-      console.log(`[${getTimestamp()}] 🔍 WebSocket check for ${symbol}:`, {
-        hasData: !!wsData,
-        hasPrice: !!wsPrice,
-        isAuthenticated: ws.isAuthenticated,
-        price: wsPrice,
-        volume: wsVolume,
-        dataKeys: wsData ? Object.keys(wsData) : null
-      });
-      
-      if (wsData && wsPrice && ws.isAuthenticated) {
-        console.log(`[${getTimestamp()}] 📡 Using WebSocket data for ${symbol}: $${wsPrice} (Volume: ${wsVolume?.toLocaleString() || 'N/A'})`);
-        
-        // Get company name from Alpaca API
-        const companyName = await getCompanyName(symbol);
-        
-        // Get previous close from REST API for percentage calculation
-        let change = 0;
-        let changePercent = "0.00";
-        
-        try {
-          const previousClose = await getPreviousClose(symbol);
-          change = wsPrice - previousClose;
-          changePercent = ((change / previousClose) * 100).toFixed(2);
-        } catch (prevCloseError) {
-          console.warn(`[${getTimestamp()}] ⚠️ Could not calculate change for ${symbol}:`, prevCloseError.message);
-          // Be honest about not having historical data
-          change = null;
-          changePercent = "N/A";
-        }
-        
-        return {
-          symbol: symbol.toUpperCase(),
-          name: companyName,
-          price: wsPrice,
-          change: change,
-          changePercent: changePercent,
-          volume: wsVolume || null,
-          timestamp: wsData.lastUpdate,
-          source: 'websocket',
-          hasHistoricalData: change !== null,
-          hasVolumeData: wsVolume !== null
-        };
-      } else {
-        console.log(`[${getTimestamp()}] 📡 WebSocket data not available for ${symbol}, falling back to REST API...`);
-      }
-    } else {
-      console.log(`[${getTimestamp()}] 📡 Using REST API for ${symbol} (non-FAANG stock)`);
-    }
+    // WebSocket functionality disabled - use REST API for all stocks
+    console.log(`[${getTimestamp()}] 📡 Using REST API for ${symbol} (WebSocket disabled)`);
 
     // Use REST API for non-FAANG stocks or when WebSocket fails
     return await getStockQuoteFromREST(symbol);
@@ -1388,15 +1321,16 @@ router.get('/transactions', authenticateToken, async (req, res) => {
 // Initialize WebSocket client for real-time data
 let wsClient = null;
 
-// Initialize WebSocket connection
+// Initialize WebSocket connection (disabled - module not available)
 const initializeWebSocket = () => {
-  if (!wsClient) {
-    wsClient = new AlpacaWebSocketClient();
-    wsClient.connect().catch(error => {
-      console.error(`[${getTimestamp()}] ❌ Failed to initialize WebSocket:`, error);
-    });
-  }
-  return wsClient;
+  console.log(`[${getTimestamp()}] ⚠️ WebSocket functionality disabled - module not available`);
+  return {
+    isConnected: false,
+    isAuthenticated: false,
+    getLiveData: () => null,
+    getCurrentPrice: () => null,
+    getCurrentVolume: () => null
+  };
 };
 
 // Cache for market data to reduce API calls
@@ -1413,19 +1347,14 @@ let chartDataCache = {
   ttl: 300000 // 5 minutes cache for chart data (increased due to larger datasets)
 };
 
-// Get WebSocket connection status
+// Get WebSocket connection status (disabled)
 router.get('/websocket-status', (req, res) => {
   try {
-    if (!wsClient) {
-      return res.json({
-        connected: false,
-        authenticated: false,
-        message: 'WebSocket client not initialized'
-      });
-    }
-    
-    const status = wsClient.getStatus();
-    res.json(status);
+    res.json({
+      connected: false,
+      authenticated: false,
+      message: 'WebSocket functionality disabled - module not available'
+    });
   } catch (error) {
     console.error(`[${getTimestamp()}] Error getting WebSocket status:`, error);
     res.status(500).json({ error: 'Failed to get WebSocket status' });
