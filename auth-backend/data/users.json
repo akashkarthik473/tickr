@@ -6,15 +6,15 @@
     "password": "$2b$10$VnnzlVx/gPOmXqFSkPQo2e.CSx6wmhW6GtzL2tEB0IyQQO0sB0Kca",
     "name": "Akash Karthik",
     "createdAt": "2025-09-14T04:34:50.716Z",
-    "lastLogin": "2025-10-16T07:41:19.201Z",
+    "lastLogin": "2025-11-08T04:30:30.065Z",
     "portfolio": {
       "balance": 10000,
       "positions": [],
       "totalValue": 10000
     },
     "learningProgress": {
-      "xp": 55,
-      "coins": 35,
+      "xp": 255,
+      "coins": 530,
       "completedLessons": [
         1,
         2
@@ -52,7 +52,23 @@
         }
       }
     },
-    "purchasedItems": [],
+    "purchasedItems": [
+      {
+        "itemId": 1,
+        "itemName": "XP Booster",
+        "itemType": "booster",
+        "price": 25,
+        "purchasedAt": "2025-11-08T05:05:54.078Z",
+        "effect": {
+          "type": "xp_multiplier",
+          "multiplier": 1.5,
+          "lessonsRemaining": 3,
+          "duration": 86400000
+        },
+        "active": false,
+        "activatedAt": null
+      }
+    ],
     "learningPreferences": {
       "dailyGoal": 3,
       "notifications": true

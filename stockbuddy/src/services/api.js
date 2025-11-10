@@ -229,6 +229,12 @@ export const api = {
     body: JSON.stringify({ itemId })
   }).then(handleResponse),
 
+  useInventoryItem: (purchaseId) => fetch(`${API_BASE_URL}/shop/use`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ purchaseId })
+  }).then(handleResponse),
+
   getActiveEffects: () => fetch(`${API_BASE_URL}/shop/active-effects`, {
     headers: getAuthHeaders()
   }).then(handleResponse),

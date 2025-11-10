@@ -109,6 +109,24 @@ function NavBar({ isLoggedIn, setIsLoggedIn }) {
               <li className="nav-item">
                 <Link 
                   className="nav-link" 
+                  to="/shop"
+                  style={{ color: isOnTradePage ? '#F4F1E9' : '#2C2C2C' }}
+                >
+                  SHOP
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link 
+                  className="nav-link" 
+                  to="/inventory"
+                  style={{ color: isOnTradePage ? '#F4F1E9' : '#2C2C2C' }}
+                >
+                  INVENTORY
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link 
+                  className="nav-link" 
                   to="/settings"
                   style={{ color: isOnTradePage ? '#F4F1E9' : '#2C2C2C' }}
                 >
