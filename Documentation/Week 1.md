@@ -3,10 +3,10 @@
 > Snapshot of high-impact initiatives the team can realistically complete in one week.
 
 ## Project 1 – Shop & Inventory Reliability
-- [ ] Add integration tests for `POST /shop/purchase` and `/shop/use` covering success, insufficient coins, and double-use attempts.
-- [ ] Update `Inventory.jsx` to show activation history + remaining duration pulled from API, and ensure buttons reflect true state.
-- [ ] Ship a data reset script (Node CLI) that restores `auth-backend/data/*.json` to pristine seeds for QA.
-- [ ] Document the “restart server after editing data files” requirement in README + tooling notes.
+- [x] Add integration tests for `POST /shop/purchase` and `/shop/use` covering success, insufficient coins, and double-use attempts.
+- [x] Update `Inventory.jsx` to show activation history + remaining duration pulled from API, and ensure buttons reflect true state.
+- [x] Ship a data reset script (Node CLI) that restores `auth-backend/data/*.json` to pristine seeds for QA.
+- [x] Document the "restart server after editing data files" requirement in README + tooling notes.
 
 ## Project 2 – AICoach Page Decomposition (Phase 1)
 - [ ] Extract the chat transcript UI into its own component + hook (`useCoachChat`), wiring it to existing data sources.

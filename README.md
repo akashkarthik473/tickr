@@ -160,6 +160,25 @@ The application will be available at `http://localhost:5173`
 - Modular route structure
 - Error handling and logging
 
+#### ⚠️ Important: Data File Changes Require Server Restart
+
+**After editing data files directly, you must restart the server for changes to take effect.**
+
+The backend server loads data files into memory at startup. Any manual edits to `auth-backend/data/*.json` files (or running the data reset script) require a server restart to be reflected.
+
+**To apply data file changes:**
+1. Stop the server (Ctrl+C)
+2. Make your data file changes or run `npm run reset-data`
+3. Restart the server (`npm start` or `npm run dev`)
+
+This applies to:
+- Direct edits to JSON data files
+- Using the data reset script (`npm run reset-data`)
+- Restoring from backups
+- Any manual data file modifications
+
+See `auth-backend/README.md` for more details. Also see `Documentation/Development-Notes.md` for comprehensive development and tooling notes.
+
 ### Key Design Decisions
 - **File-based storage**: Lightweight and perfect for development/demos; can be replaced with PostgreSQL, MongoDB, etc.
 - **Lightweight Charts**: High-performance WebGL-based charting library for smooth trading interfaces

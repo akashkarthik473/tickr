@@ -22,10 +22,27 @@ export default function Inventory() {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
   const [usingItemId, setUsingItemId] = useState(null);
+  const [activeEffects, setActiveEffects] = useState({});
 
   useEffect(() => {
     fetchInventory();
+    // Set up interval to refresh active effects every 30 seconds to show updated remaining duration
+    const interval = setInterval(() => {
+      fetchActiveEffects();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchActiveEffects = async () => {
+    try {
+      const response = await api.getActiveEffects();
+      if (response.success) {
+        setActiveEffects(response.activeEffects || {});
+      }
+    } catch (err) {
+      console.error('❌ Inventory: Error fetching active effects:', err);
+    }
+  };
 
   const fetchInventory = async () => {
     setLoading(true);
@@ -34,16 +51,26 @@ export default function Inventory() {
     
     try {
       console.log('🎒 Inventory: Fetching user data...');
-      const response = await api.getUserData();
-      console.log('🎒 Inventory: User data received:', response);
+      const [userDataResponse, activeEffectsResponse] = await Promise.all([
+        api.getUserData(),
+        api.getActiveEffects()
+      ]);
+      
+      console.log('🎒 Inventory: User data received:', userDataResponse);
+      console.log('🎒 Inventory: Active effects received:', activeEffectsResponse);
+
+      const activeEffectsData = activeEffectsResponse.success 
+        ? (activeEffectsResponse.activeEffects || {})
+        : (userDataResponse.activeEffects || {});
 
       setInventoryData({
-        purchasedItems: response.purchasedItems || [],
-        skipTokens: response.skipTokens || 0,
-        streakFreezes: response.streakFreezes || 0,
-        learningProgress: response.learningProgress || { xp: 0, coins: 0 },
-        activeEffects: response.activeEffects || {}
+        purchasedItems: userDataResponse.purchasedItems || [],
+        skipTokens: userDataResponse.skipTokens || 0,
+        streakFreezes: userDataResponse.streakFreezes || 0,
+        learningProgress: userDataResponse.learningProgress || { xp: 0, coins: 0 },
+        activeEffects: activeEffectsData
       });
+      setActiveEffects(activeEffectsData);
     } catch (err) {
       console.error('❌ Inventory: Error fetching data:', err);
       setError(err.message || 'Failed to load inventory data');
@@ -114,9 +141,67 @@ export default function Inventory() {
     return `${minutes} minute${minutes === 1 ? '' : 's'}`;
   };
 
+  // Find matching active effect for a purchased item
+  const findActiveEffectForItem = (item) => {
+    if (!item || item.itemType !== 'booster') return null;
+    
+    // Look for active effects that match this item's effect type
+    const effectType = item.effect?.type;
+    if (!effectType) return null;
+
+    // Find the most recent active effect of this type
+    let matchingEffect = null;
+    let latestActivatedAt = null;
+
+    Object.values(activeEffects).forEach(effect => {
+      if (effect.type === effectType) {
+        const activatedAt = effect.activatedAt ? new Date(effect.activatedAt).getTime() : 0;
+        if (!latestActivatedAt || activatedAt > latestActivatedAt) {
+          latestActivatedAt = activatedAt;
+          matchingEffect = effect;
+        }
+      }
+    });
+
+    return matchingEffect;
+  };
+
+  // Calculate remaining time for an active effect
+  const getRemainingTime = (effect) => {
+    if (!effect || !effect.expiresAt) return null;
+    
+    const now = new Date();
+    const expiresAt = new Date(effect.expiresAt);
+    const remaining = expiresAt.getTime() - now.getTime();
+    
+    if (remaining <= 0) return null;
+    return remaining;
+  };
+
   const getItemStatus = (item) => {
     if (!item) return 'Ready';
 
+    // Check if there's an active effect for this booster
+    if (item.itemType === 'booster') {
+      const activeEffect = findActiveEffectForItem(item);
+      if (activeEffect) {
+        const remainingTime = getRemainingTime(activeEffect);
+        const lessonsRemaining = activeEffect.lessonsRemaining || 0;
+        
+        if (remainingTime && remainingTime > 0) {
+          const remainingLabel = formatDurationLabel(remainingTime);
+          if (lessonsRemaining > 0) {
+            return `Active · ${remainingLabel} left · ${lessonsRemaining} lesson${lessonsRemaining === 1 ? '' : 's'} remaining`;
+          }
+          return `Active · ${remainingLabel} left`;
+        } else if (lessonsRemaining > 0) {
+          return `Active · ${lessonsRemaining} lesson${lessonsRemaining === 1 ? '' : 's'} remaining`;
+        }
+        return 'Active';
+      }
+    }
+
+    // Fallback to item's own status
     if (item.active) {
       if (item.effect?.type === 'streak_freeze') {
         return `Activated for ${item.effect.days} day${item.effect.days === 1 ? '' : 's'}`;
@@ -139,6 +224,15 @@ export default function Inventory() {
 
   const getStatusColor = (item) => {
     if (!item) return marbleDarkGray;
+    
+    // Check if there's an active effect for boosters
+    if (item.itemType === 'booster') {
+      const activeEffect = findActiveEffectForItem(item);
+      if (activeEffect) {
+        return '#22c55e'; // Green for active
+      }
+    }
+    
     if (item.active) return '#22c55e';
     if (item.consumed) return '#6b7280';
     return marbleDarkGray;
@@ -147,8 +241,14 @@ export default function Inventory() {
   const isItemUsable = (item) => {
     const purchaseId = resolvePurchaseId(item);
     if (!purchaseId) return false;
+    
+    // If item is consumed, it can't be used again
     if (item?.consumed) return false;
+    
+    // If item is marked as active (but not consumed), it can't be used
     if (item?.active) return false;
+    
+    // Item is ready to use
     return true;
   };
 
@@ -161,6 +261,12 @@ export default function Inventory() {
       const response = await api.useInventoryItem(purchaseId);
       console.log('🎒 Inventory: Item used response:', response);
 
+      // Refresh active effects to get updated remaining duration
+      const activeEffectsResponse = await api.getActiveEffects();
+      const updatedActiveEffects = activeEffectsResponse.success 
+        ? (activeEffectsResponse.activeEffects || {})
+        : (response.activeEffects || {});
+
       setInventoryData(prev => ({
         purchasedItems: prev.purchasedItems.map(item =>
           resolvePurchaseId(item) === purchaseId ? response.purchase : item
@@ -168,8 +274,10 @@ export default function Inventory() {
         skipTokens: response.skipTokens ?? prev.skipTokens,
         streakFreezes: response.streakFreezes ?? prev.streakFreezes,
         learningProgress: response.learningProgress ?? prev.learningProgress,
-        activeEffects: response.activeEffects ?? prev.activeEffects
+        activeEffects: updatedActiveEffects
       }));
+      
+      setActiveEffects(updatedActiveEffects);
 
       const activatedName = response.purchase?.itemName || 'Ability';
       setMessage(response.message || `${activatedName} activated!`);
@@ -532,14 +640,35 @@ export default function Inventory() {
                   position: "absolute",
                   top: "12px",
                   right: "12px",
-                  fontSize: "12px",
+                  fontSize: "11px",
                   color: marbleGray,
-                  textAlign: "right"
+                  textAlign: "right",
+                  lineHeight: "1.4"
                 }}>
-                  <div>Purchased: {new Date(item.purchasedAt).toLocaleDateString()}</div>
+                  <div style={{ marginBottom: "4px" }}>
+                    Purchased: {new Date(item.purchasedAt).toLocaleDateString()}
+                  </div>
                   {item.activatedAt && (
-                    <div>Activated: {new Date(item.activatedAt).toLocaleDateString()}</div>
+                    <div style={{ marginBottom: "4px", color: '#22c55e' }}>
+                      Activated: {new Date(item.activatedAt).toLocaleString()}
+                    </div>
                   )}
+                  {item.consumedAt && !item.activatedAt && (
+                    <div style={{ marginBottom: "4px", color: '#6b7280' }}>
+                      Used: {new Date(item.consumedAt).toLocaleString()}
+                    </div>
+                  )}
+                  {(() => {
+                    const activeEffect = findActiveEffectForItem(item);
+                    if (activeEffect && activeEffect.activatedAt) {
+                      return (
+                        <div style={{ marginBottom: "4px", color: '#22c55e', fontWeight: "600" }}>
+                          Active since: {new Date(activeEffect.activatedAt).toLocaleString()}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             ))
