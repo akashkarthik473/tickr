@@ -19,7 +19,7 @@ const StockTicker = ({ stocks = [] }) => {
   const [marketStocks, setMarketStocks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   // Full list of core US market leaders
   const coreStocks = [
@@ -41,15 +41,16 @@ const StockTicker = ({ stocks = [] }) => {
         if (stockData && stockData.length > 0) {
           setMarketStocks(stockData);
           console.log(`[${getTimestamp()}] 🎯 StockTicker: Successfully loaded ${stockData.length} stocks`);
-          // Fade in after data is loaded
-          setTimeout(() => setIsVisible(true), 100);
+          setIsVisible(true);
         } else {
           setError('No market data available');
           console.warn(`[${getTimestamp()}] 🎯 StockTicker: No market data available`);
+          setIsVisible(true); // Still show the component even if no data
         }
       } catch (error) {
         console.error(`[${getTimestamp()}] 🎯 StockTicker: Error fetching market data:`, error);
         setError('Failed to load market data');
+        setIsVisible(true); // Show component even on error
       } finally {
         setIsLoading(false);
       }
@@ -151,7 +152,7 @@ const StockTicker = ({ stocks = [] }) => {
       }}
     >
       {displayStocks && displayStocks.length > 0 ? (
-        <>
+        <div className="stock-ticker-wrapper">
           <ul>
             {displayStocks.map((stock, idx) => {
               const isPositive = isPositiveChange(stock.changePercent);
@@ -202,13 +203,13 @@ const StockTicker = ({ stocks = [] }) => {
               );
             })}
           </ul>
-        </>
+        </div>
       ) : (
-        // Show empty state with fade-in
+        // Show loading or error state
         <ul>
-          <li style={{ opacity: 0.4, transition: 'opacity 0.3s ease' }}>
+          <li style={{ opacity: 0.6, transition: 'opacity 0.3s ease' }}>
             <span className="change">
-              Loading market data...
+              {isLoading ? 'Loading market data...' : (error || 'No market data available')}
             </span>
           </li>
         </ul>

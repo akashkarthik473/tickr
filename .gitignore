@@ -41,6 +41,9 @@ Thumbs.db
 stockbuddy/NH_Traffic.7z
 stockbuddy/NHPUBLICABRIL.7z
 auth-backend/data/users.json
+auth-backend/data/portfolios.json
+auth-backend/data/transactions.json
+auth-backend/data/backups/
 
 Documentation/Codebase.md
 /auth-backend/node_modules

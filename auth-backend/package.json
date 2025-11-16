@@ -5,7 +5,10 @@
   "scripts": {
     "test": "jest",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "reset-data": "node scripts/reset-data.js",
+    "reset-data:backup": "node scripts/reset-data.js --backup",
+    "reset-data:force": "node scripts/reset-data.js --force"
   },
   "keywords": [],
   "author": "",

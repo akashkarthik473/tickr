@@ -42,7 +42,19 @@
     "learningPreferences": {
       "dailyGoal": 3,
       "notifications": true
-    }
+    },
+    "skipTokens": 0,
+    "activeEffects": {
+      "xp_multiplier_1762578354078": {
+        "type": "xp_multiplier",
+        "multiplier": 1.5,
+        "lessonsRemaining": 3,
+        "duration": 86400000,
+        "expiresAt": "2025-11-09T05:05:54.078Z",
+        "purchasedAt": "2025-11-08T05:05:54.078Z"
+      }
+    },
+    "streakFreezes": 0
   },
   "user_1761109585064_9kqm4gpk1": {
     "id": "user_1761109585064_9kqm4gpk1",
@@ -251,7 +263,7 @@
     "password": "$2b$10$V5vsr28i7YNT8DyzS79qbuEdR4EyPRe83HmwklhZl8xAwqxK.2S4W",
     "name": "ritvik v",
     "createdAt": "2025-10-22T05:23:11.394Z",
-    "lastLogin": "2025-10-22T05:28:48.524Z",
+    "lastLogin": "2025-11-11T00:38:58.197Z",
     "portfolio": {
       "balance": 10000,
       "positions": [],
@@ -259,7 +271,7 @@
     },
     "learningProgress": {
       "xp": 0,
-      "coins": 0,
+      "coins": 425,
       "completedLessons": [],
       "completedUnitTests": [],
       "finalTestCompleted": false,
@@ -267,11 +279,68 @@
       "unitTestAttempts": {},
       "lessonAttempts": {}
     },
-    "purchasedItems": [],
+    "purchasedItems": [
+      {
+        "id": "1762821553099",
+        "itemId": 1,
+        "itemName": "XP Booster",
+        "itemType": "booster",
+        "price": 25,
+        "purchasedAt": "2025-11-11T00:39:13.099Z",
+        "effect": {
+          "type": "xp_multiplier",
+          "multiplier": 1.5,
+          "lessonsRemaining": 3,
+          "duration": 86400000
+        },
+        "active": true,
+        "consumed": true,
+        "activatedAt": "2025-11-11T00:39:55.613Z",
+        "consumedAt": "2025-11-11T00:39:55.613Z"
+      },
+      {
+        "id": "1762821556704",
+        "itemId": 2,
+        "itemName": "Coin Doubler",
+        "itemType": "booster",
+        "price": 50,
+        "purchasedAt": "2025-11-11T00:39:16.704Z",
+        "effect": {
+          "type": "coin_multiplier",
+          "multiplier": 2,
+          "lessonsRemaining": 5,
+          "duration": 172800000
+        },
+        "active": true,
+        "consumed": true,
+        "activatedAt": "2025-11-11T00:39:20.863Z",
+        "consumedAt": "2025-11-11T00:39:20.863Z"
+      }
+    ],
     "learningPreferences": {
       "dailyGoal": 3,
       "notifications": true,
       "difficulty": "auto"
+    },
+    "activeEffects": {
+      "coin_multiplier_1762821560863": {
+        "type": "coin_multiplier",
+        "multiplier": 2,
+        "lessonsRemaining": 5,
+        "duration": 172800000,
+        "expiresAt": "2025-11-13T00:39:20.863Z",
+        "purchasedAt": "2025-11-11T00:39:16.704Z",
+        "activatedAt": "2025-11-11T00:39:20.863Z"
+      },
+      "xp_multiplier_1762821595613": {
+        "type": "xp_multiplier",
+        "multiplier": 1.5,
+        "lessonsRemaining": 3,
+        "duration": 86400000,
+        "expiresAt": "2025-11-12T00:39:55.613Z",
+        "purchasedAt": "2025-11-11T00:39:13.099Z",
+        "activatedAt": "2025-11-11T00:39:55.613Z"
+      }
     }
   },
   "user_1761110972112_y5uk2dzyh": {

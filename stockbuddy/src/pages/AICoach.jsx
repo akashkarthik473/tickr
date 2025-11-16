@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SuperChart } from '../components/SuperChart';
+import { CoachChat } from '../components/CoachChat';
+import { DecisionSidebar } from '../components/DecisionSidebar';
+import { useCoachChat } from '../hooks/useCoachChat';
+import { api } from '../services/api';
 import { marbleWhite, marbleLightGray, marbleGray, marbleDarkGray, marbleGold } from '../marblePalette';
 import { fontHeading, fontBody, fontMono } from '../fontPalette';
 
@@ -193,9 +197,6 @@ const renderMarkdown = (raw = '') => {
 
 function AICoach() {
   const [currentScenario, setCurrentScenario] = useState(0);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [userInput, setUserInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [scenarioCompleted, setScenarioCompleted] = useState(false);
   const [userDecision, setUserDecision] = useState(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
@@ -239,17 +240,11 @@ function AICoach() {
   }, []);
 
   // Initialize chat with welcome message (skip during bounce)
+  // The hook handles this, but we need to respect bounce logic
   useEffect(() => {
-    if (chatMessages.length === 0 && !bounceInProgressRef.current) {
-      setChatMessages([
-        {
-          type: 'ai',
-          content: `Welcome to the ${scenario.title} trading challenge! 🎯\n\nI'm your AI trading coach. I can help you understand market concepts, explain trading strategies, and provide educational insights.\n\nWhat would you like to know about this scenario?`,
-          timestamp: Date.now()
-        }
-      ]);
-    }
-  }, [currentScenario, chatMessages.length]);
+    // Don't initialize if bounce is in progress - let bounce handle it
+    if (bounceInProgressRef.current) return;
+  }, [currentScenario]);
 
   // Progress bounce when candles arrive for the displayed scenario
   useEffect(() => {
@@ -278,7 +273,7 @@ function AICoach() {
         ]);
       }
     }
-  }, [bouncePhase, currentScenario, chartScenarioIndex, chartData, chatMessages.length]);
+  }, [bouncePhase, currentScenario, chartScenarioIndex, chartData, chatMessages.length, setChatMessages]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -355,63 +350,7 @@ function AICoach() {
     return { value, pct, currentPrice };
   };
 
-  const handleSendMessage = async () => {
-    if (!userInput.trim()) return;
-
-    const userMessage = {
-      type: 'user',
-      content: userInput,
-      timestamp: Date.now()
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
-    setUserInput('');
-    setIsLoading(true);
-
-    try {
-      // Call AI for educational response
-      const response = await fetch('/api/ai-coach/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userInput,
-          scenario: scenario.scenario,
-          chatHistory: chatMessages
-        })
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        const aiMessage = {
-          type: 'ai',
-          content: result.response,
-          timestamp: Date.now()
-        };
-        setChatMessages(prev => [...prev, aiMessage]);
-      } else {
-        // Fallback response
-        const fallbackMessage = {
-          type: 'ai',
-          content: "I'm here to help you learn about trading! Ask me about market psychology, technical analysis, risk management, or any trading concepts you'd like to understand better.",
-          timestamp: Date.now()
-        };
-        setChatMessages(prev => [...prev, fallbackMessage]);
-      }
-    } catch (error) {
-      console.error('AI Chat error:', error);
-      const errorMessage = {
-        type: 'ai',
-        content: "I'm here to help you learn about trading! Ask me about market psychology, technical analysis, risk management, or any trading concepts you'd like to understand better.",
-        timestamp: Date.now()
-      };
-      setChatMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Chat sending is now handled by the CoachChat component via the hook
 
   const handleOrderSubmit = async () => {
     if (!orderType || !orderPrice || !orderReasoning.trim()) return;
@@ -432,48 +371,42 @@ function AICoach() {
     setOrderReasoning('');
 
     // Add decision to chat
-    const decisionMessage = {
+    addMessage({
       type: 'user',
       content: `I decided to ${orderType} ${decision.shares} shares at $${orderPrice} because: ${orderReasoning}`,
       timestamp: Date.now()
-    };
-    setChatMessages(prev => [...prev, decisionMessage]);
+    });
 
     // Analyze the decision
-    setIsLoading(true);
     try {
-      const response = await fetch('/api/ai-coach/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userDecisions: [decision],
-          scenario: scenario.scenario,
-          optimalStrategy: scenario.scenario.optimalStrategy
-        })
+      const result = await api.analyzeDecision({
+        userDecisions: [decision],
+        scenario: scenario.scenario,
+        optimalStrategy: scenario.scenario.optimalStrategy
       });
-
-      const result = await response.json();
       
       if (result.success) {
-        const analysisMessage = {
+        addMessage({
           type: 'ai',
           content: `🎯 **Analysis Complete!**\n\n**Score: ${result.analysis.totalScore}/100**\n\n${result.analysis.coaching.overall}\n\n**Key Insights:**\n• ${result.analysis.coaching.marketPsychology}\n• ${result.analysis.coaching.fundamentals}\n• ${result.analysis.coaching.technicalAnalysis}\n• ${result.analysis.coaching.riskManagement}\n\n**Next Steps:**\n${result.analysis.coaching.nextSteps.map(step => `• ${step}`).join('\n')}`,
           timestamp: Date.now()
-        };
-        setChatMessages(prev => [...prev, analysisMessage]);
+        });
         setScenarioCompleted(true);
       }
     } catch (error) {
       console.error('Analysis error:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  const handleCancelOrder = () => {
+    setShowOrderForm(false);
+    setOrderType('');
+    setOrderPrice('');
+    setOrderReasoning('');
+  };
+
   const resetScenario = () => {
-    setChatMessages([]);
+    resetChat();
     setScenarioCompleted(false);
     setUserDecision(null);
     setShowOrderForm(false);
@@ -1410,402 +1343,21 @@ function AICoach() {
           </div>
 
           {/* Trading Actions */}
-          {!scenarioCompleted && (
-            <div style={{
-              backgroundColor: marbleLightGray,
-              borderRadius: '20px',
-              padding: '16px'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: marbleDarkGray,
-                marginBottom: '16px'
-              }}>
-                📊 Your Trading Decision
-              </h3>
-
-              {!showOrderForm ? (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}>
-                  {/* Buy buttons - only show for 'buy' challenges */}
-                  {scenario.puzzleType === 'buy' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setOrderType('buy');
-                          setOrderPrice(scenario.initialPrice.toString());
-                          setShowOrderForm(true);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#22c55e',
-                          color: 'white',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontFamily: fontBody
-                    }}
-                  >
-                    📈 Buy Now
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          setOrderType('limit-buy');
-                          setOrderPrice('');
-                          setShowOrderForm(true);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#3b82f6',
-                          color: 'white',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontFamily: fontBody
-                    }}
-                  >
-                    📋 Buy When Price Hits...
-                      </button>
-                    </>
-                  )}
-
-                  {/* Sell buttons - only show for 'sell' challenges */}
-                  {scenario.puzzleType === 'sell' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setOrderType('sell');
-                          setOrderPrice(scenario.initialPrice.toString());
-                          setShowOrderForm(true);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontFamily: fontBody
-                    }}
-                  >
-                    📉 Sell Now
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          setOrderType('limit-sell');
-                          setOrderPrice('');
-                          setShowOrderForm(true);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#f59e0b',
-                          color: 'white',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontFamily: fontBody
-                    }}
-                  >
-                    📋 Sell When Price Hits...
-                      </button>
-                    </>
-                  )}
-
-                  {/* Hold button - always available */}
-                  <button
-                    onClick={() => {
-                      setOrderType('hold');
-                      setOrderPrice('0');
-                      setShowOrderForm(true);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      backgroundColor: marbleGold,
-                      color: marbleDarkGray,
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontFamily: fontBody
-                    }}
-                  >
-                    ⏸️ Hold (Wait and Watch)
-                  </button>
-
-                  {/* Disabled buy buttons for sell challenges */}
-                  {scenario.puzzleType === 'sell' && (
-                    <>
-                      <button
-                        disabled
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#9ca3af',
-                          color: '#6b7280',
-                          fontWeight: 'bold',
-                          cursor: 'not-allowed',
-                          fontSize: '14px',
-                          opacity: 0.6,
-                          fontFamily: fontBody
-                        }}
-                      >
-                        📈 Buy Now (Not Available)
-                      </button>
-                      
-                      <button
-                        disabled
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#9ca3af',
-                          color: '#6b7280',
-                          fontWeight: 'bold',
-                          cursor: 'not-allowed',
-                          fontSize: '14px',
-                          opacity: 0.6,
-                          fontFamily: fontBody
-                        }}
-                      >
-                        📋 Buy When Price Hits... (Not Available)
-                      </button>
-                    </>
-                  )}
-
-                  {/* Disabled sell buttons for buy challenges */}
-                  {scenario.puzzleType === 'buy' && (
-                    <>
-                      <button
-                        disabled
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#9ca3af',
-                          color: '#6b7280',
-                          fontWeight: 'bold',
-                          cursor: 'not-allowed',
-                          fontSize: '14px',
-                          opacity: 0.6,
-                          fontFamily: fontBody
-                        }}
-                      >
-                        📉 Sell Now (Not Available)
-                      </button>
-                      
-                      <button
-                        disabled
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#9ca3af',
-                          color: '#6b7280',
-                          fontWeight: 'bold',
-                          cursor: 'not-allowed',
-                          fontSize: '14px',
-                          opacity: 0.6,
-                          fontFamily: fontBody
-                        }}
-                      >
-                        📋 Sell When Price Hits... (Not Available)
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div style={{
-                  backgroundColor: marbleWhite,
-                  borderRadius: '12px',
-                  padding: '16px'
-                }}>
-                  <h4 style={{
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    color: marbleDarkGray,
-                    marginBottom: '12px'
-                  }}>
-                    {orderType === 'buy' ? '📈 Buy Order' :
-                     orderType === 'limit-buy' ? '📋 Limit Buy Order' :
-                     orderType === 'sell' ? '📉 Sell Order' :
-                     orderType === 'limit-sell' ? '📋 Limit Sell Order' :
-                     '⏸️ Hold Decision'}
-                  </h4>
-                  
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                  }}>
-                    {/* Portfolio info for buy orders */}
-                    {(orderType === 'buy' || orderType === 'limit-buy') && (
-                      <div style={{
-                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                        borderRadius: '8px',
-                        padding: '12px',
-                        border: '1px solid rgba(0, 0, 0, 0.1)',
-                        marginBottom: '8px'
-                      }}>
-                        <div style={{
-                          color: marbleGray,
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          marginBottom: '4px',
-                          fontFamily: fontBody
-                        }}>
-                          Portfolio Info:
-                        </div>
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '4px'
-                        }}>
-                          <span style={{ color: marbleGray, fontSize: '12px', fontFamily: fontBody }}>
-                            Available Cash:
-                          </span>
-                          <span style={{ color: marbleDarkGray, fontSize: '14px', fontWeight: '600', fontFamily: fontBody }}>
-                            ${BEGINNER_BUDGET.toLocaleString()}
-                          </span>
-                        </div>
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}>
-                          <span style={{ color: marbleGray, fontSize: '12px', fontFamily: fontBody }}>
-                            Max Shares at ${orderPrice || scenario.initialPrice}:
-                          </span>
-                          <span style={{ color: marbleDarkGray, fontSize: '14px', fontWeight: '600', fontFamily: fontBody }}>
-                            {Math.floor(BEGINNER_BUDGET / parseFloat(orderPrice || scenario.initialPrice))} shares
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <label style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        color: marbleDarkGray,
-                        marginBottom: '4px',
-                        display: 'block'
-                      }}>
-                        Price: ${orderPrice}
-                      </label>
-                      <input
-                        type="number"
-                        value={orderPrice}
-                        onChange={(e) => setOrderPrice(e.target.value)}
-                        placeholder="Enter price..."
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          borderRadius: '6px',
-                          border: '2px solid #e0e0e0',
-                          fontSize: '14px',
-                          fontFamily: fontBody
-                        }}
-                      />
-                    </div>
-                    
-                    <div>
-                      <label style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        color: marbleDarkGray,
-                        marginBottom: '4px',
-                        display: 'block'
-                      }}>
-                        Reasoning:
-                      </label>
-                      <textarea
-                        value={orderReasoning}
-                        onChange={(e) => setOrderReasoning(e.target.value)}
-                        placeholder="Explain your decision..."
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          borderRadius: '6px',
-                          border: '2px solid #e0e0e0',
-                          fontSize: '14px',
-                          minHeight: '60px',
-                          resize: 'vertical',
-                          fontFamily: fontBody
-                        }}
-                      />
-                    </div>
-                    
-                    <div style={{
-                      display: 'flex',
-                      gap: '8px'
-                    }}>
-                      <button
-                        onClick={handleOrderSubmit}
-                        disabled={!orderPrice || !orderReasoning.trim()}
-                        style={{
-                          flex: 1,
-                          padding: '8px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          backgroundColor: marbleGold,
-                          color: marbleDarkGray,
-                          fontWeight: '500',
-                          cursor: !orderPrice || !orderReasoning.trim() ? 'not-allowed' : 'pointer',
-                          fontSize: '12px',
-                          fontFamily: fontBody
-                        }}
-                      >
-                        ✅ Submit Decision
-                      </button>
-                      <button
-                        onClick={() => setShowOrderForm(false)}
-                        style={{
-                          flex: 1,
-                          padding: '8px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          backgroundColor: marbleGray,
-                          color: 'white',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontFamily: fontBody
-                        }}
-                      >
-                        ❌ Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <DecisionSidebar
+            scenario={scenario}
+            scenarioCompleted={scenarioCompleted}
+            orderType={orderType}
+            orderPrice={orderPrice}
+            orderReasoning={orderReasoning}
+            showOrderForm={showOrderForm}
+            beginnerBudget={BEGINNER_BUDGET}
+            onOrderTypeChange={setOrderType}
+            onOrderPriceChange={setOrderPrice}
+            onOrderReasoningChange={setOrderReasoning}
+            onShowOrderFormChange={setShowOrderForm}
+            onSubmitDecision={handleOrderSubmit}
+            onCancelOrder={handleCancelOrder}
+          />
 
           {/* Navigation */}
           <div style={{

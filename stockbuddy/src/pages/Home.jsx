@@ -208,7 +208,7 @@ function Home({ isLoggedIn }) {
             </Link>
             <Link
               to={isLoggedIn ? "/dashboard" : "/signin"}
-              className="btn btn-outline-light learn-more-btn"
+              className="btn learn-more-btn fw-bold px-4 py-2 shadow"
             >
               Learn More
             </Link>
@@ -253,6 +253,57 @@ function Home({ isLoggedIn }) {
           </div>
         </FadeInSection>
         <FadeInSection delay={300}>
+          <div className="row align-items-center mb-5">
+            <div className="col-md-6">
+              <img src="https://placehold.co/500x300" alt="Placeholder 3" className="img-fluid rounded shadow" />
+            </div>
+            <div className="col-md-6">
+              <CascadeText
+                lines={[
+                  <h2 className="fw-bold mb-3">Simulate Trades</h2>,
+                  <p className="lead mb-1 text-muted-light">Practice trading stocks with zero risk using our paper trading platform.</p>,
+                  <p className="lead mb-1">Test your strategies in real market conditions.</p>,
+                  <p className="lead mb-1">Compete with friends and climb the leaderboard.</p>
+                ]}
+              />
+            </div>
+          </div>
+        </FadeInSection>
+        <FadeInSection delay={450}>
+          <div className="row align-items-center mb-5">
+            <div className="col-md-6">
+              <img src="/dashboard-placeholder.jpg" alt="Track Your Portfolio Dashboard" className="img-fluid rounded shadow" />
+            </div>
+            <div className="col-md-6">
+              <CascadeText
+                lines={[
+                  <h2 className="fw-bold mb-3">Track Your Portfolio</h2>,
+                  <p className="lead mb-1 text-muted-light">Monitor your investments in real time with beautiful charts and analytics.</p>,
+                  <p className="lead mb-1">See your gains, losses, and trends at a glance.</p>,
+                  <p className="lead mb-1">Stay informed with instant portfolio updates.</p>
+                ]}
+              />
+            </div>
+          </div>
+        </FadeInSection>
+        <FadeInSection delay={600}>
+          <div className="row align-items-center flex-md-row-reverse mb-5">
+            <div className="col-md-6">
+              <img src="https://placehold.co/500x300" alt="Placeholder 2" className="img-fluid rounded shadow" />
+            </div>
+            <div className="col-md-6">
+              <CascadeText
+                lines={[
+                  <h2 className="fw-bold mb-3">Learn With Interactive Lessons</h2>,
+                  <p className="lead mb-1 text-muted-light">Boost your investing knowledge with hands-on, gamified learning modules.</p>,
+                  <p className="lead mb-1">Quizzes and challenges keep you engaged.</p>,
+                  <p className="lead mb-1">Track your progress and earn badges as you learn.</p>
+                ]}
+              />
+            </div>
+          </div>
+        </FadeInSection>
+        <FadeInSection delay={750}>
           <div className="row align-items-center mb-5">
             <div className="col-md-6">
               <img src="https://placehold.co/500x300" alt="Placeholder 3" className="img-fluid rounded shadow" />
