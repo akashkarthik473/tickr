@@ -210,8 +210,6 @@ function AICoach() {
   const [showDetails, setShowDetails] = useState(false);
   const [showPLCalculation, setShowPLCalculation] = useState(false);
   const [showSharesCalculation, setShowSharesCalculation] = useState(false);
-  const chatEndRef = useRef(null);
-  const chatContainerRef = useRef(null);
   const didBounceScenarioRef = useRef(false);
   const bounceInProgressRef = useRef(false);
   const bounceAltIndexRef = useRef(1);
@@ -219,6 +217,15 @@ function AICoach() {
   const [bouncePhase, setBouncePhase] = useState('idle'); // idle | toAlt | back | done
 
   const scenario = HISTORICAL_SCENARIOS[currentScenario];
+
+  // Use chat hook for state management (needed for bounce logic and decision analysis)
+  // Disable chat during bounce to prevent premature welcome message
+  const {
+    chatMessages,
+    setChatMessages,
+    addMessage,
+    resetChat
+  } = useCoachChat(scenario, bouncePhase === 'done' || bouncePhase === 'idle');
 
   // Derive initial as-of date based on puzzle type for clarity
   useEffect(() => {
@@ -275,16 +282,7 @@ function AICoach() {
     }
   }, [bouncePhase, currentScenario, chartScenarioIndex, chartData, chatMessages.length, setChatMessages]);
 
-  // Auto-scroll to bottom of chat
-  useEffect(() => {
-    const container = chatContainerRef.current;
-    if (!container) return;
-
-    const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
-    if (distanceToBottom <= 40) {
-      container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
-    }
-  }, [chatMessages]);
+  // Auto-scroll is handled by the CoachChat component via the hook
 
   // Helpers for historical price lookup
   const parseDateToEpoch = (dateString) => {
@@ -1229,118 +1227,11 @@ function AICoach() {
           gap: '16px'
         }}>
           {/* Chat Window */}
-          <div style={{
-            backgroundColor: marbleLightGray,
-            borderRadius: '20px',
-            padding: '16px',
-            height: '500px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <h3 style={{
-              fontSize: '20px',
-              fontWeight: 'bold',
-              color: marbleDarkGray,
-              marginBottom: '16px',
-              fontFamily: fontHeading
-            }}>
-              💬 AI Trading Coach
-            </h3>
-
-            {/* Chat Messages */}
-            <div
-              ref={chatContainerRef}
-              style={{
-              flex: 1,
-              overflowY: 'auto',
-              marginBottom: '16px',
-              padding: '8px',
-              backgroundColor: marbleWhite,
-              borderRadius: '12px'
-            }}>
-              {chatMessages.map((message, index) => (
-                <div key={index} style={{
-                  marginBottom: '12px',
-                  textAlign: message.type === 'user' ? 'right' : 'left'
-                }}>
-                  <div style={{
-                    display: 'inline-block',
-                    maxWidth: '80%',
-                    padding: '8px 12px',
-                    borderRadius: '12px',
-                    backgroundColor: message.type === 'user' ? marbleGold : marbleLightGray,
-                    color: message.type === 'user' ? marbleDarkGray : marbleDarkGray,
-                    fontSize: '14px',
-                    lineHeight: '1.4',
-                    fontFamily: fontBody,
-                    wordBreak: 'break-word'
-                  }}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
-                  />
-                </div>
-              ))}
-              {isLoading && (
-                <div style={{
-                  textAlign: 'left',
-                  marginBottom: '12px'
-                }}>
-                  <div style={{
-                    display: 'inline-block',
-                    padding: '8px 12px',
-                    borderRadius: '12px',
-                    backgroundColor: marbleLightGray,
-                    color: marbleDarkGray,
-                    fontSize: '14px',
-                    fontFamily: fontBody
-                  }}>
-                    🤖 AI is thinking...
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Chat Input */}
-            {!scenarioCompleted && (
-              <div style={{
-                display: 'flex',
-                gap: '8px'
-              }}>
-                <input
-                  type="text"
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder={`Ask about ${scenario.symbol}, ${scenario.puzzleType.toUpperCase()} puzzle, or any trading concept...`}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '2px solid #e0e0e0',
-                    fontSize: '14px',
-                    fontFamily: fontBody
-                  }}
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !userInput.trim()}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: marbleGold,
-                    color: marbleDarkGray,
-                    fontWeight: 'bold',
-                    cursor: isLoading || !userInput.trim() ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontFamily: fontBody
-                  }}
-                >
-                  Send
-                </button>
-              </div>
-            )}
-          </div>
+          <CoachChat
+            scenario={scenario}
+            enabled={bouncePhase === 'done' || bouncePhase === 'idle'}
+            disabled={scenarioCompleted}
+          />
 
           {/* Trading Actions */}
           <DecisionSidebar
