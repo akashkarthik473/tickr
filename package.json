@@ -7,6 +7,7 @@
     "test": "npm run test --prefix auth-backend && npm run test --prefix stockbuddy"
   },
   "dependencies": {
+    "@google/genai": "^1.29.0",
     "axios": "^1.10.0",
     "framer-motion": "^12.23.0",
     "lottie-react": "^2.4.1",

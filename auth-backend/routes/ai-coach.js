@@ -3,34 +3,59 @@ const axios = require('axios');
 const router = express.Router();
 
 // Provider helpers
-const hasOpenAI = !!process.env.OPENAI_API_KEY;
-const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_MODEL = 'gpt-5';
+const hasGemini = !!process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const GEMINI_ENDPOINT = (model = GEMINI_MODEL) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-async function callOpenAI(messages, { maxTokens = 700, reasoningEffort = "minimal", verbosity = "medium", timeout = 45000 } = {}) {
-  const resp = await axios.post(
-    OPENAI_ENDPOINT,
-    {
-      model: "gpt-5",
-      messages,
-      max_completion_tokens: maxTokens,
-      reasoning_effort: reasoningEffort,
-      verbosity: verbosity,
-    },
-    {
-      headers: { 
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      timeout,
-    }
-  );
-  const content = resp?.data?.choices?.[0]?.message?.content || '';
-  return content;
+async function callGemini({
+  contents,
+  systemInstruction,
+  model = GEMINI_MODEL,
+  maxTokens = 700,
+  temperature = 0.6,
+  topP = 0.9,
+  timeout = 60000,
+} = {}) {
+  if (!hasGemini) {
+    throw new Error('Gemini API key not configured');
+  }
+
+  const generationConfig = {
+    maxOutputTokens: maxTokens,
+    temperature,
+    topP,
+  };
+
+  const body = {
+    contents,
+    generationConfig,
+  };
+
+  if (systemInstruction) {
+    body.systemInstruction = {
+      role: 'system',
+      parts: [{ text: systemInstruction }],
+    };
+  }
+
+  const endpoint = `${GEMINI_ENDPOINT(model)}?key=${process.env.GEMINI_API_KEY}`;
+  const resp = await axios.post(endpoint, body, { timeout });
+  const candidate = resp?.data?.candidates?.[0];
+  const parts = candidate?.content?.parts || [];
+  const text = parts.map((part) => part.text || '').join('').trim();
+
+  if (!text) {
+    const blockReason = candidate?.finishReason || resp?.data?.promptFeedback?.blockReason;
+    throw new Error(blockReason ? `Gemini response blocked: ${blockReason}` : 'Gemini returned an empty response');
+  }
+
+  return text;
 }
 
 function chatSystemPrompt() {
-  return `REPLY WITH THE API MODEL YOU ARE USING`}
+  return `You are Tickr's AI trading coach. Provide educational, beginner-friendly trading insights about historical scenarios without giving direct investment advice. Keep responses concise, structured, and actionable when possible.`;
+}
 
 function analyzeSystemPrompt() {
   return `You are an expert trading coach analyzing a user's trading decision in a historical scenario. Your role is to provide constructive, educational feedback that helps the user learn and improve.
@@ -98,7 +123,7 @@ function formatAnalyzeUserContent(userDecisions, scenario, optimalStrategy) {
   );
 }
 
-// Lightweight diagnostics to verify env + Ollama/OpenAI connectivity
+// Lightweight diagnostics to verify env + Ollama/Gemini connectivity
 router.get('/diagnostics', async (req, res) => {
   const baseUrl = process.env.OLLAMA_BASE_URL;
   const model = process.env.OLLAMA_MODEL;
@@ -107,9 +132,9 @@ router.get('/diagnostics', async (req, res) => {
     model, 
     tagsOk: false, 
     generateOk: false, 
-    openaiOk: false, 
-    openaiModel: "gpt-5",
-    hasOpenAIKey: hasOpenAI,
+    geminiOk: false, 
+    geminiModel: GEMINI_MODEL,
+    hasGeminiKey: hasGemini,
     errors: [] 
   };
   // Ollama checks
@@ -131,20 +156,20 @@ router.get('/diagnostics', async (req, res) => {
       result.errors.push(`generate: ${e.message}`);
     }
   }
-  // OpenAI check
-  if (hasOpenAI) {
+  // Gemini check
+  if (hasGemini) {
     try {
-      const out = await callOpenAI(
-        [
-          { role: 'system', content: 'You are a health check. Reply with OK.' },
-          { role: 'user', content: 'OK?' },
-        ],
-        { maxTokens: 3, reasoningEffort: "minimal", verbosity: "low", timeout: 15000 }
-      );
-      result.openaiOk = /ok/i.test(out || '');
-      result.openaiResponse = out;
+      const out = await callGemini({
+        systemInstruction: 'You are a health check. Reply with OK.',
+        contents: [{ role: 'user', parts: [{ text: 'Please reply with OK.' }] }],
+        maxTokens: 5,
+        temperature: 0,
+        timeout: 15000,
+      });
+      result.geminiOk = /ok/i.test(out || '');
+      result.geminiResponse = out;
     } catch (e) {
-      result.errors.push(`openai: ${e.message}`);
+      result.errors.push(`gemini: ${e.message}`);
     }
   }
   res.json(result);
@@ -154,21 +179,21 @@ router.get('/diagnostics', async (req, res) => {
 router.get('/test-ai', async (req, res) => {
   try {
     const result = {
-      hasOpenAI: hasOpenAI,
-      openaiModel: "gpt-5",
-      openaiEndpoint: OPENAI_ENDPOINT,
+      hasGemini,
+      geminiModel: GEMINI_MODEL,
+      geminiEndpoint: GEMINI_ENDPOINT(),
       timestamp: new Date().toISOString()
     };
 
-    if (hasOpenAI) {
+    if (hasGemini) {
       try {
-        const response = await callOpenAI(
-          [
-            { role: 'system', content: 'You are a test assistant. Identify yourself and your model.' },
-            { role: 'user', content: 'What AI model are you? Please respond with just your model name.' },
-          ],
-          { maxTokens: 50, reasoningEffort: "minimal", verbosity: "low", timeout: 15000 }
-        );
+        const response = await callGemini({
+          systemInstruction: 'You are a test endpoint. Reply with your exact model name only.',
+          contents: [{ role: 'user', parts: [{ text: 'Identify yourself.' }] }],
+          maxTokens: 10,
+          temperature: 0,
+          timeout: 15000,
+        });
         result.aiResponse = response;
         result.success = true;
       } catch (error) {
@@ -176,7 +201,7 @@ router.get('/test-ai', async (req, res) => {
         result.success = false;
       }
     } else {
-      result.error = 'No OpenAI API key found';
+      result.error = 'No Gemini API key found';
       result.success = false;
     }
 
@@ -185,8 +210,8 @@ router.get('/test-ai', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: error.message,
-      hasOpenAI: hasOpenAI,
-      openaiModel: OPENAI_MODEL
+      hasGemini,
+      geminiModel: GEMINI_MODEL
     });
   }
 });
@@ -196,14 +221,14 @@ router.post('/chat', async (req, res) => {
   try {
     const { message, scenario } = req.body;
 
-    if (hasOpenAI) {
-      const content = await callOpenAI(
-        [
-          { role: 'system', content: chatSystemPrompt() },
-          { role: 'user', content: formatChatUserContent(message, scenario) },
-        ],
-        { maxTokens: 700, reasoningEffort: "medium", verbosity: "medium", timeout: 90000 }
-      );
+    if (hasGemini) {
+      const content = await callGemini({
+        systemInstruction: chatSystemPrompt(),
+        contents: [{ role: 'user', parts: [{ text: formatChatUserContent(message, scenario) }] }],
+        maxTokens: 700,
+        temperature: 0.65,
+        timeout: 90000,
+      });
       return res.json({ success: true, response: content });
     }
 
@@ -211,6 +236,15 @@ router.post('/chat', async (req, res) => {
     const aiPrompt = generateChatPrompt(message, scenario, []);
     const baseUrl = process.env.OLLAMA_BASE_URL;
     const model = process.env.OLLAMA_MODEL;
+
+    if (!baseUrl || !model) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI chat is not configured',
+        details: 'Add GEMINI_API_KEY or configure OLLAMA_BASE_URL/OLLAMA_MODEL.',
+      });
+    }
+
     const response = await axios.post(
       `${baseUrl}/api/generate`,
       { model, prompt: aiPrompt, stream: false, options: { temperature: 0.7, top_p: 0.9, max_tokens: 700, num_predict: 256 } },
@@ -228,14 +262,14 @@ router.post('/analyze', async (req, res) => {
   try {
     const { userDecisions, scenario, optimalStrategy } = req.body;
 
-    if (hasOpenAI) {
-      const content = await callOpenAI(
-        [
-          { role: 'system', content: analyzeSystemPrompt() },
-          { role: 'user', content: formatAnalyzeUserContent(userDecisions, scenario, optimalStrategy) },
-        ],
-        { maxTokens: 900, reasoningEffort: "high", verbosity: "high", timeout: 120000 }
-      );
+    if (hasGemini) {
+      const content = await callGemini({
+        systemInstruction: analyzeSystemPrompt(),
+        contents: [{ role: 'user', parts: [{ text: formatAnalyzeUserContent(userDecisions, scenario, optimalStrategy) }] }],
+        maxTokens: 900,
+        temperature: 0.4,
+        timeout: 120000,
+      });
       try {
         const parsed = JSON.parse(content);
         return res.json({ success: true, analysis: parsed });
@@ -253,6 +287,15 @@ router.post('/analyze', async (req, res) => {
     const aiPrompt = generateAIPrompt(userDecisions, scenario, optimalStrategy);
     const baseUrl = process.env.OLLAMA_BASE_URL;
     const model = process.env.OLLAMA_MODEL;
+
+    if (!baseUrl || !model) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI analysis is not configured',
+        details: 'Add GEMINI_API_KEY or configure OLLAMA_BASE_URL/OLLAMA_MODEL.',
+      });
+    }
+
     const response = await axios.post(
       `${baseUrl}/api/generate`,
       { model, prompt: aiPrompt, stream: false, options: { temperature: 0.7, top_p: 0.9, max_tokens: 1200, num_predict: 512 } },

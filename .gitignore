@@ -43,3 +43,4 @@ stockbuddy/NHPUBLICABRIL.7z
 auth-backend/data/users.json
 
 Documentation/Codebase.md
+/auth-backend/node_modules

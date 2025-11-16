@@ -129,6 +129,68 @@ const HISTORICAL_SCENARIOS = [
   }
 ];
 
+const BEGINNER_BUDGET = 1000; // USD, used to size the example position and keep P/L approachable
+
+const escapeHtml = (text = '') =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const renderMarkdown = (raw = '') => {
+  if (!raw) return '';
+
+  let html = escapeHtml(raw);
+
+  // Headings
+  html = html.replace(/^###\s?(.*)$/gim, '<h3>$1</h3>');
+  html = html.replace(/^##\s?(.*)$/gim, '<h2>$1</h2>');
+  html = html.replace(/^#\s?(.*)$/gim, '<h1>$1</h1>');
+
+  // Bold / Italic / Code
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, (match, inner) => {
+    const trimmed = inner.trim();
+    if (!trimmed || inner !== trimmed) return match;
+    return `<em>${trimmed}</em>`;
+  });
+  html = html.replace(/_(.+?)_/g, (match, inner) => {
+    const trimmed = inner.trim();
+    if (!trimmed || inner !== trimmed) return match;
+    return `<em>${trimmed}</em>`;
+  });
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Lists
+  html = html.replace(
+    /(^|\n)(- .*(\n- .*)+)/g,
+    (match) => {
+      const items = match
+        .trim()
+        .split('\n')
+        .map((line) => line.replace(/^- /, '').trim());
+      return `\n<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>`;
+    }
+  );
+
+  // Paragraphs & line breaks
+  const blocks = html
+    .split(/\n{2,}/)
+    .map((block) => {
+      const withBreaks = block.replace(/\n/g, '<br/>');
+      return `<p>${withBreaks}</p>`;
+    })
+    .join('');
+
+  return blocks
+    .replace(/<p>(<ul>.*?<\/ul>)<\/p>/g, '$1')
+    .replace(/<p>(<h\d>.*?<\/h\d>)<\/p>/g, '$1')
+    .replace(/<p>/g, '<p style="margin:0;">');
+};
+
 function AICoach() {
   const [currentScenario, setCurrentScenario] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
@@ -148,6 +210,7 @@ function AICoach() {
   const [showPLCalculation, setShowPLCalculation] = useState(false);
   const [showSharesCalculation, setShowSharesCalculation] = useState(false);
   const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
   const didBounceScenarioRef = useRef(false);
   const bounceInProgressRef = useRef(false);
   const bounceAltIndexRef = useRef(1);
@@ -155,7 +218,6 @@ function AICoach() {
   const [bouncePhase, setBouncePhase] = useState('idle'); // idle | toAlt | back | done
 
   const scenario = HISTORICAL_SCENARIOS[currentScenario];
-  const BEGINNER_BUDGET = 1000; // USD, used to size the example position and keep P/L approachable
 
   // Derive initial as-of date based on puzzle type for clarity
   useEffect(() => {
@@ -220,7 +282,13 @@ function AICoach() {
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
+    if (distanceToBottom <= 40) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
+    }
   }, [chatMessages]);
 
   // Helpers for historical price lookup
@@ -1247,7 +1315,9 @@ function AICoach() {
             </h3>
 
             {/* Chat Messages */}
-            <div style={{
+            <div
+              ref={chatContainerRef}
+              style={{
               flex: 1,
               overflowY: 'auto',
               marginBottom: '16px',
@@ -1269,11 +1339,11 @@ function AICoach() {
                     color: message.type === 'user' ? marbleDarkGray : marbleDarkGray,
                     fontSize: '14px',
                     lineHeight: '1.4',
-                    whiteSpace: 'pre-wrap',
-                    fontFamily: fontBody
-                  }}>
-                    {message.content}
-                  </div>
+                    fontFamily: fontBody,
+                    wordBreak: 'break-word'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                  />
                 </div>
               ))}
               {isLoading && (
