@@ -239,6 +239,44 @@ export const api = {
     headers: getAuthHeaders()
   }).then(handleResponse),
 
+  // AI Coach endpoints
+  sendCoachMessage: (data) => {
+    console.log('[api.sendCoachMessage] Sending request to:', `${API_BASE_URL}/ai-coach/chat`);
+    console.log('[api.sendCoachMessage] Data:', data);
+    try {
+      // AI coach routes don't require auth, so we'll make it optional
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      return fetch(`${API_BASE_URL}/ai-coach/chat`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(data)
+      }).then(async (response) => {
+        console.log('[api.sendCoachMessage] Response status:', response.status);
+        console.log('[api.sendCoachMessage] Response ok:', response.ok);
+        return handleResponse(response);
+      }).catch(error => {
+        console.error('[api.sendCoachMessage] Fetch error:', error);
+        throw error;
+      });
+    } catch (error) {
+      console.error('[api.sendCoachMessage] Error:', error);
+      throw error;
+    }
+  },
+
+  analyzeDecision: (data) => fetch(`${API_BASE_URL}/ai-coach/analyze`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+
   // Test endpoint to add coins for testing
   addTestCoins: (amount = 100) => fetch(`${API_BASE_URL}/auth/add-test-coins`, {
     method: 'POST',

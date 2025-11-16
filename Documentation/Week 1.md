@@ -9,9 +9,9 @@
 - [x] Document the "restart server after editing data files" requirement in README + tooling notes.
 
 ## Project 2 – AICoach Page Decomposition (Phase 1)
-- [ ] Extract the chat transcript UI into its own component + hook (`useCoachChat`), wiring it to existing data sources.
-- [ ] Carve out the decision sidebar (orders, stats) into `DecisionSidebar` with clearly typed props.
-- [ ] Add Storybook (or Vite preview stories) for the new components to allow visual regression checks.
+- [x] Extract the chat transcript UI into its own component + hook (`useCoachChat`), wiring it to existing data sources.
+- [x] Carve out the decision sidebar (orders, stats) into `DecisionSidebar` with clearly typed props.
+- [x] Add Storybook (or Vite preview stories) for the new components to allow visual regression checks.
 
 ## Project 3 – Testing & CI Baseline
 - [x] Configure Jest (or Vitest) for `auth-backend/` and add smoke tests for auth + trading routes.
