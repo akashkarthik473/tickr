@@ -6,7 +6,7 @@
     "password": "$2b$10$VnnzlVx/gPOmXqFSkPQo2e.CSx6wmhW6GtzL2tEB0IyQQO0sB0Kca",
     "name": "Akash Karthik",
     "createdAt": "2025-09-14T04:34:50.716Z",
-    "lastLogin": "2025-11-10T08:47:58.304Z",
+    "lastLogin": "2025-11-20T00:23:15.445Z",
     "portfolio": {
       "balance": 10000,
       "positions": [],
@@ -44,16 +44,7 @@
       "notifications": true
     },
     "skipTokens": 0,
-    "activeEffects": {
-      "xp_multiplier_1762578354078": {
-        "type": "xp_multiplier",
-        "multiplier": 1.5,
-        "lessonsRemaining": 3,
-        "duration": 86400000,
-        "expiresAt": "2025-11-09T05:05:54.078Z",
-        "purchasedAt": "2025-11-08T05:05:54.078Z"
-      }
-    },
+    "activeEffects": {},
     "streakFreezes": 0
   },
   "user_1761109585064_9kqm4gpk1": {

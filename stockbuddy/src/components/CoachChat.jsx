@@ -3,6 +3,54 @@ import { useCoachChat } from '../hooks/useCoachChat';
 import { marbleWhite, marbleLightGray, marbleGray, marbleDarkGray, marbleGold } from '../marblePalette';
 import { fontHeading, fontBody } from '../fontPalette';
 
+const escapeHtml = (text = '') =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const renderMarkdown = (raw = '') => {
+  if (!raw) return '';
+
+  let html = escapeHtml(raw);
+
+  html = html.replace(/^###\s?(.*)$/gim, '<h3>$1</h3>');
+  html = html.replace(/^##\s?(.*)$/gim, '<h2>$1</h2>');
+  html = html.replace(/^#\s?(.*)$/gim, '<h1>$1</h1>');
+
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  html = html.replace(
+    /(^|\n)(- .*(\n- .*)+)/g,
+    (match) => {
+      const items = match
+        .trim()
+        .split('\n')
+        .map((line) => line.replace(/^- /, '').trim());
+      return `\n<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>`;
+    }
+  );
+
+  const blocks = html
+    .split(/\n{2,}/)
+    .map((block) => {
+      const withBreaks = block.replace(/\n/g, '<br/>');
+      return `<p>${withBreaks}</p>`;
+    })
+    .join('');
+
+  return blocks
+    .replace(/<p>(<ul>.*?<\/ul>)<\/p>/g, '$1')
+    .replace(/<p>(<h\d>.*?<\/h\d>)<\/p>/g, '$1')
+    .replace(/<p>/g, '<p style="margin:0 0 8px 0;">');
+};
+
 /**
  * CoachChat Component
  * 
@@ -34,6 +82,8 @@ export function CoachChat({
     sendMessage,
     setUserInput
   } = useCoachChat(scenario, enabled);
+  
+  const chatContainerRef = React.useRef(null);
 
   // Notify parent of errors
   React.useEffect(() => {
@@ -41,6 +91,20 @@ export function CoachChat({
       onError(error);
     }
   }, [error, onError]);
+
+  // Auto-scroll when messages change or loading state changes
+  React.useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    // Always scroll to bottom on new messages or loading state to ensure visibility
+    setTimeout(() => {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 100);
+  }, [chatMessages, isLoading]);
 
   const handleSendMessage = async () => {
     if (!userInput.trim() || disabled || !enabled) return;
@@ -83,7 +147,9 @@ export function CoachChat({
       </h3>
 
       {/* Chat Messages */}
-      <div style={{
+      <div 
+        ref={chatContainerRef}
+        style={{
         flex: 1,
         overflowY: 'auto',
         marginBottom: '16px',
@@ -96,7 +162,8 @@ export function CoachChat({
             marginBottom: '12px',
             textAlign: message.type === 'user' ? 'right' : 'left'
           }}>
-            <div style={{
+            <div
+              style={{
               display: 'inline-block',
               maxWidth: '80%',
               padding: '8px 12px',
@@ -105,10 +172,13 @@ export function CoachChat({
               color: message.type === 'user' ? marbleDarkGray : marbleDarkGray,
               fontSize: '14px',
               lineHeight: '1.4',
-              whiteSpace: 'pre-wrap',
               fontFamily: fontBody
-            }}>
-              {message.content}
+            }}
+            >
+              <div
+                className="coach-message-content"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+              />
             </div>
           </div>
         ))}

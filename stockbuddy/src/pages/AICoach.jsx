@@ -377,6 +377,13 @@ function AICoach() {
 
     // Analyze the decision
     try {
+      // Show loading message
+      addMessage({
+        type: 'ai',
+        content: '🤔 Analyzing your decision...',
+        timestamp: Date.now()
+      });
+
       const result = await api.analyzeDecision({
         userDecisions: [decision],
         scenario: scenario.scenario,
@@ -384,15 +391,84 @@ function AICoach() {
       });
       
       if (result.success) {
+        const analysis = result.analysis;
+        const breakdown = analysis.breakdown || {};
+        
+        let analysisContent = `🎯 **Analysis Complete!**\n\n**Your Score: ${analysis.totalScore}/100**\n\n`;
+        
+        // Add breakdown if available
+        if (breakdown.decisionQuality !== undefined) {
+          analysisContent += `## Score Breakdown:\n`;
+          analysisContent += `• **Decision Quality**: ${breakdown.decisionQuality}/20\n`;
+          analysisContent += `• **Timing**: ${breakdown.timing}/20\n`;
+          analysisContent += `• **Reasoning**: ${breakdown.reasoning}/20\n`;
+          analysisContent += `• **Risk Management**: ${breakdown.riskManagement}/20\n`;
+          analysisContent += `• **Market Understanding**: ${breakdown.marketUnderstanding}/20\n\n`;
+        }
+        
+        // Overall assessment
+        analysisContent += `## Overall Assessment:\n${analysis.coaching.overall}\n\n`;
+        
+        // Strengths
+        if (analysis.coaching.strengths && analysis.coaching.strengths.length > 0) {
+          analysisContent += `## What You Did Well:\n${analysis.coaching.strengths.map(s => `• ${s}`).join('\n')}\n\n`;
+        }
+        
+        // Areas for improvement
+        if (analysis.coaching.improvements && analysis.coaching.improvements.length > 0) {
+          analysisContent += `## Areas to Improve:\n${analysis.coaching.improvements.map(i => `• ${i}`).join('\n')}\n\n`;
+        }
+        
+        // Key insights
+        analysisContent += `## Key Insights:\n`;
+        if (analysis.coaching.marketPsychology) {
+          analysisContent += `### Market Psychology:\n${analysis.coaching.marketPsychology}\n\n`;
+        }
+        if (analysis.coaching.fundamentals) {
+          analysisContent += `### Fundamental Analysis:\n${analysis.coaching.fundamentals}\n\n`;
+        }
+        if (analysis.coaching.technicalAnalysis) {
+          analysisContent += `### Technical Analysis:\n${analysis.coaching.technicalAnalysis}\n\n`;
+        }
+        if (analysis.coaching.riskManagement) {
+          analysisContent += `### Risk Management:\n${analysis.coaching.riskManagement}\n\n`;
+        }
+        
+        // Next steps
+        if (analysis.coaching.nextSteps && analysis.coaching.nextSteps.length > 0) {
+          analysisContent += `## Next Steps:\n${analysis.coaching.nextSteps.map(step => `• ${step}`).join('\n')}\n`;
+        }
+        
+        // Scenario comparison
+        if (analysis.scenarioComparison) {
+          analysisContent += `\n\n---\n\n**Historical Context:** ${analysis.scenarioComparison}`;
+        }
+        
         addMessage({
           type: 'ai',
-          content: `🎯 **Analysis Complete!**\n\n**Score: ${result.analysis.totalScore}/100**\n\n${result.analysis.coaching.overall}\n\n**Key Insights:**\n• ${result.analysis.coaching.marketPsychology}\n• ${result.analysis.coaching.fundamentals}\n• ${result.analysis.coaching.technicalAnalysis}\n• ${result.analysis.coaching.riskManagement}\n\n**Next Steps:**\n${result.analysis.coaching.nextSteps.map(step => `• ${step}`).join('\n')}`,
+          content: analysisContent,
           timestamp: Date.now()
         });
+        // Only mark as completed if analysis succeeded
         setScenarioCompleted(true);
+      } else {
+        addMessage({
+          type: 'ai',
+          content: `I apologize, but I'm having trouble analyzing your decision right now. Please try again later. ${result.error || 'Analysis service unavailable'}`,
+          timestamp: Date.now()
+        });
+        // Don't auto-complete on error
+        setScenarioCompleted(false);
       }
     } catch (error) {
       console.error('Analysis error:', error);
+      addMessage({
+        type: 'ai',
+        content: `I encountered an error while analyzing your decision: ${error.message || 'Unknown error'}. Please try submitting again.`,
+        timestamp: Date.now()
+      });
+      // Don't auto-complete on error
+      setScenarioCompleted(false);
     }
   };
 

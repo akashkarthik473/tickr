@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const tradingRoutes = require('./routes/trading');
 const aiCoachRoutes = require('./routes/ai-coach');
 const shopRoutes = require('./routes/shop');
+const FileStorage = require('./services/storageService');
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -20,58 +21,6 @@ const getTimestamp = () => {
     fractionalSecondDigits: 3
   });
 };
-
-// File-based storage class
-class FileStorage {
-  constructor(dataDir) {
-    this.dataDir = dataDir;
-  }
-
-  readFile(filePath) {
-    try {
-      if (fs.existsSync(filePath)) {
-        const data = fs.readFileSync(filePath, 'utf8');
-        return JSON.parse(data);
-      }
-      return {};
-    } catch (error) {
-      console.error(`[${getTimestamp()}] Error reading ${filePath}:`, error.message);
-      return {};
-    }
-  }
-
-  writeFile(filePath, data) {
-    try {
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    } catch (error) {
-      console.error(`[${getTimestamp()}] Error writing ${filePath}:`, error.message);
-    }
-  }
-
-  getUsers() {
-    return this.readFile(this.usersFile);
-  }
-
-  saveUsers(users) {
-    this.writeFile(this.usersFile, users);
-  }
-
-  getPortfolios() {
-    return this.readFile(this.portfoliosFile);
-  }
-
-  savePortfolios(portfolios) {
-    this.writeFile(this.portfoliosFile, portfolios);
-  }
-
-  getTransactions() {
-    return this.readFile(this.transactionsFile);
-  }
-
-  saveTransactions(transactions) {
-    this.writeFile(this.transactionsFile, transactions);
-  }
-}
 
 const validateEnvironment = () => {
   const requiredVars = ['JWT_SECRET', 'GOOGLE_CLIENT_ID', 'ALPACA_API_KEY', 'ALPACA_SECRET_KEY'];

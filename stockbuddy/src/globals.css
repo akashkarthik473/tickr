@@ -322,3 +322,46 @@ body {
 .chart-timeframe-btn:hover {
   transform: scale(1.02);
 } 
+
+/* AI Coach Markdown styling */
+.coach-message-content {
+  font-family: inherit;
+  font-size: 14px;
+  color: inherit;
+}
+
+.coach-message-content h1,
+.coach-message-content h2,
+.coach-message-content h3 {
+  font-family: inherit;
+  color: #1f2933;
+  margin: 0 0 6px 0;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.coach-message-content h1 {
+  font-size: 16px;
+}
+
+.coach-message-content h2 {
+  font-size: 15px;
+}
+
+.coach-message-content h3 {
+  font-size: 14px;
+}
+
+.coach-message-content p {
+  margin: 0 0 8px 0;
+}
+
+.coach-message-content ul {
+  margin: 0 0 8px 18px;
+  padding-left: 16px;
+}
+
+.coach-message-content li {
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}

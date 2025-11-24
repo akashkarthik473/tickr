@@ -47,6 +47,14 @@ async function callGemini({
 
   if (!text) {
     const blockReason = candidate?.finishReason || resp?.data?.promptFeedback?.blockReason;
+    
+    // Special handling for MAX_TOKENS: it's not really blocked, just cut off.
+    if (blockReason === 'MAX_TOKENS') {
+      // If we have parts but they joined to empty string (unlikely), or if text is just missing
+      console.warn('[GEMINI] Response cut off due to MAX_TOKENS. Candidate:', JSON.stringify(candidate, null, 2));
+      throw new Error('AI response was truncated. Please try asking a shorter question.');
+    }
+    
     throw new Error(blockReason ? `Gemini response blocked: ${blockReason}` : 'Gemini returned an empty response');
   }
 
@@ -54,73 +62,162 @@ async function callGemini({
 }
 
 function chatSystemPrompt() {
-  return `You are Tickr's AI trading coach. Provide educational, beginner-friendly trading insights about historical scenarios without giving direct investment advice. Keep responses concise, structured, and actionable when possible.`;
+  return `You are Tickr's AI Trading Coach. Your goal is to teach beginners how to trade using historical scenarios.
+
+CRITICAL INSTRUCTIONS:
+1. **CONCISE**: You have a strict limit of 2 short paragraphs.
+2. **DIRECT**: Get straight to the point. No fluff like "That's a great question" or "It's interesting to note".
+3. **SIMPLE**: Use simple language for beginners.
+4. **FORMATTING**: Use Markdown (bolding, lists) to make it readable.
+5. **NO YAPPING**: Do not over-explain. Give the core concept and how it applies.
+
+When asked about a concept (like Fair Value Gaps):
+- Define it simply in 1 sentence.
+- Explain if/how it applies to the current scenario in 2-3 sentences.
+- Stop.
+
+Do not write an essay. Do not get cut off. Keep it under 150 words.`;
 }
 
 function analyzeSystemPrompt() {
-  return `You are an expert trading coach analyzing a user's trading decision in a historical scenario. Your role is to provide constructive, educational feedback that helps the user learn and improve.
+  return `You are Tickr's AI Trading Coach providing comprehensive analysis of a student's trading decision in a historical scenario. Your goal is to help them learn from this experience and become better traders.
+
+## Your Analysis Approach
+You are evaluating a real decision made by a student learning to trade. Be:
+- **Encouraging**: Even poor decisions have learning value. Frame feedback positively.
+- **Specific**: Point out exactly what they did well or could improve.
+- **Educational**: Explain WHY certain approaches work better, not just WHAT to do.
+- **Actionable**: Give concrete steps they can take to improve.
 
 ## Analysis Framework
-Evaluate the user's decision across these key areas:
-1. **Decision Quality**: Was the choice appropriate for the situation?
-2. **Timing**: Did they act at the right moment or miss opportunities?
-3. **Reasoning**: Was their logic sound and well-thought-out?
-4. **Risk Management**: Did they consider and manage risks appropriately?
-5. **Learning Value**: What can they learn from this decision?
+Evaluate across these dimensions:
+
+1. **Decision Quality** (20 points)
+   - Was the action type (buy/sell/hold) appropriate for the scenario?
+   - Did they understand the situation correctly?
+
+2. **Timing** (20 points)
+   - Did they act at the right moment given available information?
+   - Did they consider entry/exit timing strategically?
+
+3. **Reasoning Quality** (20 points)
+   - Was their logic sound and well-thought-out?
+   - Did they consider relevant factors?
+   - Is their reasoning clear and defensible?
+
+4. **Risk Management** (20 points)
+   - Did they consider position sizing?
+   - Did they think about potential downsides?
+   - Was their approach appropriate for their risk tolerance?
+
+5. **Market Understanding** (20 points)
+   - Did they understand market psychology?
+   - Did they consider fundamental and technical factors?
+   - Did they show awareness of market context?
 
 ## Response Format
-Return ONLY valid JSON in this exact structure:
+Return ONLY valid JSON in this exact structure (no markdown, no code blocks, just pure JSON):
 {
   "totalScore": <number 0-100>,
+  "breakdown": {
+    "decisionQuality": <number 0-20>,
+    "timing": <number 0-20>,
+    "reasoning": <number 0-20>,
+    "riskManagement": <number 0-20>,
+    "marketUnderstanding": <number 0-20>
+  },
   "coaching": {
-    "overall": "<brief summary of the decision and main takeaway>",
-    "marketPsychology": "<insight about market psychology and emotions>",
-    "fundamentals": "<analysis of fundamental factors considered>",
-    "technicalAnalysis": "<evaluation of technical factors>",
-    "riskManagement": "<assessment of risk management approach>",
-    "nextSteps": ["<actionable step 1>", "<actionable step 2>", "<actionable step 3>"]
-  }
+    "overall": "<2-3 sentence summary highlighting the main takeaway and what they can learn>",
+    "strengths": ["<specific strength 1>", "<specific strength 2>", "<specific strength 3>"],
+    "improvements": ["<specific area to improve 1>", "<specific area to improve 2>"],
+    "marketPsychology": "<2-3 sentences about psychological factors relevant to their decision>",
+    "fundamentals": "<2-3 sentences about fundamental analysis considerations>",
+    "technicalAnalysis": "<2-3 sentences about technical factors if relevant>",
+    "riskManagement": "<2-3 sentences about their risk management approach and suggestions>",
+    "nextSteps": ["<specific actionable step 1>", "<specific actionable step 2>", "<specific actionable step 3>"]
+  },
+  "scenarioComparison": "<brief 2-3 sentence explanation of how their decision compared to what actually happened historically - but don't reveal optimal strategy if they want to try again>"
 }
 
 ## Scoring Guidelines
-- **90-100**: Excellent decision with strong reasoning
-- **80-89**: Good decision with minor areas for improvement
-- **70-79**: Decent decision but missed some key factors
-- **60-69**: Poor decision with significant issues
-- **Below 60**: Very poor decision with major flaws
+- **90-100**: Outstanding decision showing strong understanding across all areas
+- **80-89**: Good decision with solid reasoning, minor gaps
+- **70-79**: Decent decision but missed some important considerations
+- **60-69**: Flawed decision but shows some understanding
+- **Below 60**: Poor decision indicating need for foundational learning
 
-## Feedback Style
-- Be constructive and encouraging, not harsh
-- Focus on learning opportunities
-- Provide specific, actionable advice
-- Acknowledge what they did well
-- Explain the reasoning behind your assessment
+## Critical Rules
+1. **Be encouraging**: Frame feedback as learning opportunities, not failures
+2. **Be specific**: "You considered technical indicators" not "Good job"
+3. **Be educational**: Explain concepts, don't just judge
+4. **Maintain context**: Reference the scenario and their specific reasoning
+5. **Stay in character**: You're a coach helping them learn, not a critic
 
-Remember: This is about education, not judgment. Help them become better traders.`;
+Remember: This analysis should leave the student feeling informed and motivated to learn more, regardless of their score.`;
 }
 
-function formatChatUserContent(message, scenario) {
-  return (
-    `SCENARIO: ${scenario?.title || 'Unknown'}\n` +
-    `CONTEXT: ${scenario?.context || ''}\n` +
-    `KEY EVENTS: ${(scenario?.keyEvents || []).join(', ')}\n\n` +
-    `QUESTION: ${message}\n\n` +
-    'Teach the concept(s) relevant to the question. Do not give any puzzle answer.'
-  );
+function formatChatUserContent(message, scenario, chatHistory = []) {
+  const scenarioInfo = `SCENARIO: ${scenario?.title || 'Unknown'}
+CONTEXT: ${scenario?.context || ''}
+KEY EVENTS: ${(scenario?.keyEvents || []).join(', ')}
+
+PUZZLE TYPE: ${scenario?.puzzleType || 'unknown'} challenge - ${scenario?.puzzleType === 'buy' ? 'User needs to decide when to enter' : scenario?.puzzleType === 'sell' ? 'User already has a position and needs to decide when to exit' : 'User needs to make trading decisions'}`;
+
+  const historyContext = chatHistory.length > 0 
+    ? `\nPREVIOUS CONVERSATION:\n${chatHistory
+        .filter(m => m.type === 'user' || m.type === 'ai')
+        .slice(-6) // Last 6 messages for context
+        .map(m => `${m.type === 'user' ? 'Student' : 'Coach'}: ${m.content}`)
+        .join('\n')}\n`
+    : '';
+
+  return `${scenarioInfo}${historyContext}
+
+CURRENT QUESTION: ${message}
+
+INSTRUCTIONS: Provide an educational, engaging response that helps the student understand the trading concepts relevant to their question. Use the scenario context to make your explanation concrete and relevant. If this is part of an ongoing conversation, reference previous topics naturally. Never reveal the "correct" trading decision for this scenario - focus on teaching concepts.`;
 }
 
 function formatAnalyzeUserContent(userDecisions, scenario, optimalStrategy) {
   const decisionsText = userDecisions
-    .map((d, i) => `Step ${i + 1}: ${d.type} @ $${d.price} shares=${d.shares} reason="${d.reasoning}"`)
-    .join('\n');
+    .map((d, i) => `Decision ${i + 1}:
+  Action: ${d.type.toUpperCase()}
+  Price: $${d.price}
+  Shares: ${d.shares || 'N/A'}
+  Reasoning: "${d.reasoning || 'No reasoning provided'}"
+  Timestamp: ${new Date(d.timestamp || Date.now()).toISOString()}`)
+    .join('\n\n');
+
   const optimal = Object.values(optimalStrategy || {})
-    .map((s, i) => `Step ${i + 1}: ${s.type} @ $${s.price} shares=${s.shares} reason="${s.reasoning}"`)
-    .join('\n');
-  return (
-    `SCENARIO: ${scenario?.title}\nCONTEXT: ${scenario?.context}\nKEY EVENTS: ${(scenario?.keyEvents || []).join(', ')}\n\n` +
-    `USER DECISIONS:\n${decisionsText}\n\nOPTIMAL STRATEGY:\n${optimal}\n\n` +
-    'Score accuracy (type, timing), reasoning quality, and risk. Return STRICT JSON only.'
-  );
+    .map((s, i) => `Step ${i + 1}:
+  Action: ${s.type.toUpperCase()}
+  Price: $${s.price}
+  Shares: ${s.shares || 'N/A'}
+  Reasoning: "${s.reasoning || ''}"`)
+    .join('\n\n');
+
+  return `HISTORICAL TRADING SCENARIO ANALYSIS
+
+SCENARIO: ${scenario?.title || 'Unknown'}
+CONTEXT: ${scenario?.context || ''}
+KEY EVENTS: ${(scenario?.keyEvents || []).join(', ')}
+PUZZLE TYPE: ${scenario?.puzzleType || 'unknown'}
+
+STUDENT'S DECISION:
+${decisionsText}
+
+REFERENCE STRATEGY (for context - use to understand what factors were most important, but don't copy directly):
+${optimal}
+
+ANALYSIS INSTRUCTIONS:
+Provide a comprehensive, educational analysis of the student's decision. Focus on:
+1. What they did well (be specific)
+2. What they could improve (be constructive)
+3. The concepts they should learn more about
+4. How their reasoning compares to expert thinking
+5. Actionable next steps for their learning journey
+
+Remember: This is a learning exercise. Your analysis should help them understand trading better, not just score them. Be encouraging while being thorough. Return ONLY valid JSON in the specified format.`;
 }
 
 // Lightweight diagnostics to verify env + Ollama/Gemini connectivity
@@ -219,21 +316,52 @@ router.get('/test-ai', async (req, res) => {
 // AI Coach chat endpoint for educational responses
 router.post('/chat', async (req, res) => {
   try {
-    const { message, scenario } = req.body;
+    const { message, scenario, chatHistory = [] } = req.body;
+
+    if (!message || !scenario) {
+      return res.status(400).json({
+        success: false,
+        error: 'Message and scenario are required'
+      });
+    }
 
     if (hasGemini) {
+      // Build conversation history for Gemini
+      const contents = [];
+      
+      // Add recent chat history as conversation turns
+      if (chatHistory && chatHistory.length > 0) {
+        // Include last 8 messages (4 turns) for context
+        const recentHistory = chatHistory
+          .filter(m => m.type === 'user' || m.type === 'ai')
+          .slice(-8);
+        
+        for (const msg of recentHistory) {
+          contents.push({
+            role: msg.type === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.content }]
+          });
+        }
+      }
+      
+      // Add current message
+      contents.push({
+        role: 'user',
+        parts: [{ text: formatChatUserContent(message, scenario, chatHistory) }]
+      });
+
       const content = await callGemini({
         systemInstruction: chatSystemPrompt(),
-        contents: [{ role: 'user', parts: [{ text: formatChatUserContent(message, scenario) }] }],
-        maxTokens: 700,
-        temperature: 0.65,
+        contents,
+        maxTokens: 1000,
+        temperature: 0.7,
         timeout: 90000,
       });
       return res.json({ success: true, response: content });
     }
 
-    // Fallback to Ollama
-    const aiPrompt = generateChatPrompt(message, scenario, []);
+      // Fallback to Ollama
+    const aiPrompt = generateChatPrompt(message, scenario, chatHistory || []);
     const baseUrl = process.env.OLLAMA_BASE_URL;
     const model = process.env.OLLAMA_MODEL;
 
@@ -247,14 +375,40 @@ router.post('/chat', async (req, res) => {
 
     const response = await axios.post(
       `${baseUrl}/api/generate`,
-      { model, prompt: aiPrompt, stream: false, options: { temperature: 0.7, top_p: 0.9, max_tokens: 700, num_predict: 256 } },
+      { model, prompt: aiPrompt, stream: false, options: { temperature: 0.7, top_p: 0.9, max_tokens: 1000, num_predict: 512 } },
       { timeout: 90000 }
     );
     return res.json({ success: true, response: response.data.response });
-  } catch (error) {
-    console.error('[AI-CHAT] Error:', error?.response?.data || error.message);
-    res.status(500).json({ success: false, error: 'AI chat failed', details: error.message });
-  }
+    } catch (error) {
+      console.error('[AI-CHAT] Error:', error?.response?.data || error.message);
+      
+      // More helpful error messages
+      let errorMessage = 'AI chat failed';
+      let statusCode = 500;
+      
+      if (error.message.includes('not configured') || error.message.includes('503')) {
+        statusCode = 503;
+        errorMessage = 'AI chat service is not configured. Please add GEMINI_API_KEY or configure OLLAMA_BASE_URL/OLLAMA_MODEL.';
+      } else if (error.message.includes('timeout')) {
+        statusCode = 504;
+        errorMessage = 'AI chat request timed out. Please try again with a shorter question.';
+      } else if (error.message.includes('truncated')) {
+        statusCode = 502; // Bad Gateway / Upstream Error
+        errorMessage = 'AI response was truncated. Please try asking a more specific question.';
+      } else if (error.message.includes('blocked')) {
+        statusCode = 400;
+        errorMessage = 'AI response was blocked due to content policy. Please try rephrasing your question.';
+      } else if (error.message.includes('empty response')) {
+        statusCode = 502;
+        errorMessage = 'AI service returned an empty response. Please try again.';
+      }
+      
+      res.status(statusCode).json({ 
+        success: false, 
+        error: errorMessage, 
+        details: error.message 
+      });
+    }
 });
 
 // AI Coach endpoint for real AI analysis
@@ -266,21 +420,62 @@ router.post('/analyze', async (req, res) => {
       const content = await callGemini({
         systemInstruction: analyzeSystemPrompt(),
         contents: [{ role: 'user', parts: [{ text: formatAnalyzeUserContent(userDecisions, scenario, optimalStrategy) }] }],
-        maxTokens: 900,
-        temperature: 0.4,
+        maxTokens: 1500,
+        temperature: 0.5,
         timeout: 120000,
       });
+      
+      // Enhanced JSON parsing with better error handling
+      let parsed;
       try {
-        const parsed = JSON.parse(content);
-        return res.json({ success: true, analysis: parsed });
-      } catch {
-        // Try to salvage JSON from content
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return res.json({ success: true, analysis: JSON.parse(jsonMatch[0]) });
+        // Try direct parse first
+        parsed = JSON.parse(content);
+      } catch (parseError) {
+        // Try to extract JSON from markdown code blocks
+        const codeBlockMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        if (codeBlockMatch) {
+          try {
+            parsed = JSON.parse(codeBlockMatch[1]);
+          } catch {
+            // Fall through to other extraction methods
+          }
         }
-        return res.json({ success: true, analysis: parseFallbackResponse(content) });
+        
+        // Try to find JSON object in content
+        if (!parsed) {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              parsed = JSON.parse(jsonMatch[0]);
+            } catch {
+              // Fall through to fallback
+            }
+          }
+        }
+        
+        // If still no valid JSON, use fallback
+        if (!parsed) {
+          console.warn('[AI-ANALYZE] Failed to parse JSON, using fallback. Content:', content.substring(0, 200));
+          parsed = parseFallbackResponse(content, userDecisions, scenario);
+        }
       }
+      
+      // Validate required fields exist
+      if (!parsed.totalScore && parsed.totalScore !== 0) {
+        parsed.totalScore = 50; // Default score if missing
+      }
+      if (!parsed.coaching) {
+        parsed.coaching = {
+          overall: 'Analysis completed successfully',
+          marketPsychology: 'Review market psychology concepts',
+          fundamentals: 'Consider fundamental factors',
+          technicalAnalysis: 'Apply technical analysis',
+          riskManagement: 'Focus on risk management',
+          nextSteps: ['Review trading concepts', 'Practice more scenarios']
+        };
+      }
+      
+      return res.json({ success: true, analysis: parsed });
     }
 
     // Fallback to Ollama path
@@ -305,37 +500,64 @@ router.post('/analyze', async (req, res) => {
     return res.json({ success: true, analysis: aiAnalysis });
   } catch (error) {
     console.error('[AI-ANALYZE] Error:', error?.response?.data || error.message);
-    res.status(500).json({ success: false, error: 'AI analysis failed', details: error.message });
+    
+    // More helpful error messages
+    let errorMessage = 'AI analysis failed';
+    let statusCode = 500;
+    
+    if (error.message.includes('not configured') || error.message.includes('503')) {
+      statusCode = 503;
+      errorMessage = 'AI analysis service is not configured. Please add GEMINI_API_KEY or configure OLLAMA_BASE_URL/OLLAMA_MODEL.';
+    } else if (error.message.includes('timeout')) {
+      statusCode = 504;
+      errorMessage = 'AI analysis request timed out. Please try again.';
+    } else if (error.message.includes('blocked')) {
+      statusCode = 400;
+      errorMessage = 'AI response was blocked due to content policy. Please check your decision reasoning.';
+    } else if (error.message.includes('empty response')) {
+      statusCode = 502;
+      errorMessage = 'AI service returned an empty response. Please try again.';
+    }
+    
+    res.status(statusCode).json({ 
+      success: false, 
+      error: errorMessage, 
+      details: error.message 
+    });
   }
 });
 
 // Ollama legacy prompts (kept for fallback)
 function generateChatPrompt(message, scenario, chatHistory) {
-  return `You are an expert trading coach helping a student learn about trading. You are analyzing the scenario: ${scenario.title}
+  const historyContext = chatHistory && chatHistory.length > 0
+    ? `\nPREVIOUS CONVERSATION:\n${chatHistory
+        .filter(m => m.type === 'user' || m.type === 'ai')
+        .slice(-6)
+        .map(m => `${m.type === 'user' ? 'Student' : 'Coach'}: ${m.content}`)
+        .join('\n')}\n`
+    : '';
 
-SCENARIO CONTEXT:
-${scenario.context}
+  return `You are Tickr's AI Trading Coach - an expert educator helping students master trading through historical scenarios.
 
-KEY EVENTS:
-${(scenario.keyEvents || []).join(', ')}
+SCENARIO: ${scenario?.title || 'Unknown'}
+CONTEXT: ${scenario?.context || ''}
+KEY EVENTS: ${(scenario?.keyEvents || []).join(', ')}
+${historyContext}
+STUDENT'S QUESTION: "${message}"
 
-IMPORTANT: You are ONLY allowed to provide educational information and guidance. You CANNOT give direct trading advice or tell the user what to do. Your role is to:
-
-1. Explain trading concepts and terminology
-2. Provide educational insights about market psychology
-3. Explain fundamental and technical analysis concepts
-4. Discuss risk management principles
-5. Help the user understand the scenario better
+Your role is to be an educational mentor. Provide:
+- Clear explanations of trading concepts
+- Real examples from the scenario
+- Thought-provoking questions to guide learning
+- Practical frameworks for decision-making
 
 You CANNOT:
-- Tell the user to buy, sell, or hold
+- Tell them what to buy/sell/hold
 - Give specific price targets
-- Make predictions about what will happen
-- Suggest specific trading strategies
+- Make predictions
+- Give direct investment advice
 
-User's question: "${message}"
-
-Provide an educational, helpful response that teaches trading concepts without giving direct advice.`;
+Provide an engaging, educational response that helps them understand trading better.`;
 }
 
 function generateAIPrompt(userDecisions, scenario, optimalStrategy) {
@@ -382,24 +604,65 @@ function parseAIResponse(aiResponse) {
   }
 }
 
-function parseFallbackResponse(aiResponse) {
+function parseFallbackResponse(aiResponse, userDecisions = null, scenario = null) {
   const scoreMatch = aiResponse.match(/score.*?(\d+)/i);
-  const score = scoreMatch ? parseInt(scoreMatch[1]) : 50;
-  const sections = aiResponse.split('\n\n');
+  const score = scoreMatch ? parseInt(scoreMatch[1]) : 70; // Default to 70 instead of 50
+  
+  // Extract key information from the response
+  const sections = aiResponse.split('\n\n').filter(s => s.trim().length > 0);
+  
+  // Try to extract structured information
+  const strengths = extractListItems(aiResponse, ['strength', 'good', 'well', 'excellent', 'positive']);
+  const weaknesses = extractListItems(aiResponse, ['weakness', 'improve', 'better', 'consider', 'should']);
+  const nextSteps = extractListItems(aiResponse, ['next', 'action', 'step', 'recommend', 'suggest']);
+  
   return {
     totalScore: score,
-    detailedFeedback: [{ step: 1, score, feedback: 'AI analysis completed', strengths: ['Analysis provided'], weaknesses: ['Response parsing limited'] }],
-    coaching: {
-      overall: sections[0] || 'AI analysis completed',
-      marketPsychology: extractSection(aiResponse, 'psychology'),
-      fundamentals: extractSection(aiResponse, 'fundamental'),
-      technicalAnalysis: extractSection(aiResponse, 'technical'),
-      riskManagement: extractSection(aiResponse, 'risk'),
-      nextSteps: ['Review the analysis', 'Practice more scenarios'],
+    breakdown: {
+      decisionQuality: Math.floor(score * 0.2),
+      timing: Math.floor(score * 0.2),
+      reasoning: Math.floor(score * 0.2),
+      riskManagement: Math.floor(score * 0.2),
+      marketUnderstanding: Math.floor(score * 0.2)
     },
-    strengths: ['AI analysis provided'],
-    weaknesses: ['Response format limited'],
+    coaching: {
+      overall: sections[0]?.substring(0, 300) || 'Your decision shows thoughtful consideration. Let\'s explore the key concepts you applied.',
+      strengths: strengths.length > 0 ? strengths : ['You took the time to make a reasoned decision'],
+      improvements: weaknesses.length > 0 ? weaknesses : ['Consider exploring related trading concepts'],
+      marketPsychology: extractSection(aiResponse, 'psychology') || 'Market psychology plays a key role in trading decisions. Emotions like fear and greed can significantly impact outcomes.',
+      fundamentals: extractSection(aiResponse, 'fundamental') || 'Fundamental analysis involves evaluating a company\'s financial health, competitive position, and growth prospects.',
+      technicalAnalysis: extractSection(aiResponse, 'technical') || 'Technical analysis uses price patterns and indicators to identify potential entry and exit points.',
+      riskManagement: extractSection(aiResponse, 'risk') || 'Effective risk management involves position sizing, setting stop losses, and understanding your risk tolerance.',
+      nextSteps: nextSteps.length > 0 ? nextSteps : ['Review trading concepts in the Learn section', 'Practice more scenarios', 'Focus on understanding market psychology']
+    },
+    scenarioComparison: scenario ? `This scenario was based on real historical events. Your decision demonstrates ${score >= 70 ? 'solid' : 'developing'} understanding of trading principles.` : ''
   };
+}
+
+function extractListItems(text, keywords) {
+  const items = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+    if (keywords.some(keyword => lowerLine.includes(keyword))) {
+      // Try to extract list items
+      const bulletMatch = line.match(/[-•*]\s*(.+)/);
+      if (bulletMatch) {
+        items.push(bulletMatch[1].trim());
+      } else {
+        // Extract sentence after keyword
+        const keywordIndex = keywords.findIndex(k => lowerLine.includes(k));
+        if (keywordIndex >= 0) {
+          const cleanLine = line.replace(/^[^:]*:\s*/, '').trim();
+          if (cleanLine.length > 10 && cleanLine.length < 200) {
+            items.push(cleanLine);
+          }
+        }
+      }
+      if (items.length >= 3) break;
+    }
+  }
+  return items.slice(0, 3);
 }
 
 function extractSection(text, keyword) {
