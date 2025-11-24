@@ -23,7 +23,7 @@
 
 ## Project 3: Security & Reliability Suite (includes AI Fixes)
 **Scope:** Harden the application against abuse/failures and fix critical AI analysis bugs.
-- [ ] **FIX AI Analysis:** Debug and fix the "blank response" issue in AI Coach decision analysis (timeout/error handling).
+- [ ] **FIX AI Analysis:** Debug and fix the "blank response" issue in AI Coach decision analysis (timeout/error handling). (LWK TOP PRIORITY)
 - [ ] **Rate Limiting:** Implement strict rate limits on Auth and AI endpoints (Redis-backed).
 - [ ] **Input Validation:** Add `zod` or `joi` validation middleware for all API routes.
 - [ ] **CI/CD Repair:** Fix the broken `jest` dependency tree and ensure CI passes on every commit.
