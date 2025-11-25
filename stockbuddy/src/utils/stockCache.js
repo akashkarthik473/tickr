@@ -67,12 +67,37 @@ const isCacheValid = () => {
   return stockCache.data && (now - cacheTimestamp) < CACHE_DURATION;
 };
 
-// Get cached data
+// Get cached data (synchronous - checks in-memory cache first, then localStorage)
 const getCachedData = () => {
+  // First check in-memory cache
   if (isCacheValid()) {
-    console.log(`[${getTimestamp()}] 📊 Using cached stock data`);
+    console.log(`[${getTimestamp()}] 📊 Using in-memory cached stock data`);
     return stockCache.data;
   }
+  
+  // If in-memory cache is invalid, try loading from localStorage synchronously
+  try {
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    const cachedTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
+    
+    if (cachedData && cachedTimestamp) {
+      const parsedData = JSON.parse(cachedData);
+      const timestamp = parseInt(cachedTimestamp);
+      const now = Date.now();
+      
+      // Check if cache is still valid
+      if ((now - timestamp) < CACHE_DURATION) {
+        // Restore to in-memory cache
+        stockCache.data = parsedData;
+        cacheTimestamp = timestamp;
+        console.log(`[${getTimestamp()}] 📊 Using localStorage cached stock data`);
+        return parsedData;
+      }
+    }
+  } catch (error) {
+    // Silently fail - will fetch fresh data
+  }
+  
   return null;
 };
 

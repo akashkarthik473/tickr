@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import './StockTicker.css';
-import { fetchStockData, CACHE_DURATION } from '../utils/stockCache';
+import { fetchStockData, getCachedData, CACHE_DURATION } from '../utils/stockCache';
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -16,18 +16,22 @@ const getTimestamp = () => {
 const StockTicker = ({ stocks = [] }) => {
   const containerRef = useRef(null);
   const itemRefs = useRef([]);
-  const [marketStocks, setMarketStocks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isVisible, setIsVisible] = useState(true);
-
+  
   // Full list of core US market leaders
   const coreStocks = [
     'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'SPY'
   ];
 
+  // Check cache synchronously first to avoid showing loading state if data exists
+  const cachedData = getCachedData();
+  const [marketStocks, setMarketStocks] = useState(cachedData || []);
+  const [isLoading, setIsLoading] = useState(!cachedData || cachedData.length === 0); // Only show loading if no cache
+  const [error, setError] = useState(null);
+  const [isVisible, setIsVisible] = useState(true);
+
   // Fetch market data for core stocks
   useEffect(() => {
+    // Define fetch function first so it can be used in interval
     const fetchMarketData = async () => {
       try {
         setIsLoading(true);
@@ -56,10 +60,19 @@ const StockTicker = ({ stocks = [] }) => {
       }
     };
 
-    // Fetch data immediately
-    fetchMarketData();
+    // Check if we already have cached data - if so, skip initial fetch
+    const initialCache = getCachedData();
+    if (initialCache && initialCache.length > 0) {
+      console.log(`[${getTimestamp()}] 🎯 StockTicker: Using cached data, skipping initial fetch`);
+      setMarketStocks(initialCache);
+      setIsLoading(false);
+      setIsVisible(true);
+    } else {
+      // No cache, fetch immediately
+      fetchMarketData();
+    }
 
-    // Refresh data every 30 minutes
+    // Set up refresh interval for background updates (works for both cached and fresh data)
     const interval = setInterval(() => {
       console.log(`[${getTimestamp()}] 🎯 StockTicker: Auto-refreshing market data`);
       fetchMarketData();
