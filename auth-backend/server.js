@@ -35,7 +35,7 @@ const ALPACA_ENV = env.ALPACA_ENV || 'paper';
 // Warn if not using paper trading
 if (ALPACA_ENV === 'live') {
   console.warn(`[${getTimestamp()}] ⚠️  LIVE TRADING ENABLED - Real money at risk!`);
-}
+  }
 
 const app = express();
 const PORT = process.env.PORT || 5001;

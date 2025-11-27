@@ -1,327 +1,1153 @@
-import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import Typewriter from "../components/Typewriter";
-import StockTicker from "../components/StockTicker";
-import FadeInSection from "../components/FadeInSection";
-import CascadeText from "../components/CascadeText";
-import { fetchStockData } from "../utils/stockCache";
-import { useNavbarBackground } from "../hooks/useNavbarBackground";
+import React, { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom";
+import styled, { keyframes } from "styled-components";
+import { marbleWhite, marbleLightGray, marbleGray, marbleDarkGray, marbleBlack, marbleGold } from "../marblePalette";
 
-// Helper function to get formatted timestamp
-const getTimestamp = () => {
-  return new Date().toLocaleTimeString('en-US', { 
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    fractionalSecondDigits: 3
-  });
-};
+// ============ ANIMATIONS ============
+const pulse = keyframes`
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+`;
 
-function Home({ isLoggedIn }) {
-  const [preloadedStocks, setPreloadedStocks] = useState([]);
-  const location = useLocation();
-  const { setNavbarBackground, resetNavbarBackground } = useNavbarBackground();
+const slideUp = keyframes`
+  from { opacity: 0; transform: translateY(60px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
 
-  // Preload stock data immediately when component mounts
-  useEffect(() => {
-    const preloadStockData = async () => {
-      const coreStocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'SPY'];
-      
-      console.log(`[${getTimestamp()}] 🏠 Home: Starting to preload stock data`);
-      
-      try {
-        // Use shared cache utility
-        const stockData = await fetchStockData(coreStocks);
-        
-        if (stockData && stockData.length > 0) {
-          setPreloadedStocks(stockData);
-          console.log(`[${getTimestamp()}] 🏠 Home: Successfully preloaded ${stockData.length} stocks`);
-        } else {
-          console.warn(`[${getTimestamp()}] 🏠 Home: No stock data available for preloading`);
-        }
-      } catch (error) {
-        console.warn(`[${getTimestamp()}] 🏠 Home: Preload failed:`, error);
+// Floating accent elements
+const FloatingAccent = styled.div`
+  position: absolute;
+  pointer-events: none;
+  transition: transform 0.1s ease-out;
+  z-index: 1;
+`;
+
+const GoldDot = styled(FloatingAccent)`
+  width: ${props => props.$size || '8px'};
+  height: ${props => props.$size || '8px'};
+  border-radius: 50%;
+  background: ${marbleGold};
+  opacity: ${props => props.$opacity || 0.6};
+`;
+
+const GoldLine = styled(FloatingAccent)`
+  width: ${props => props.$width || '60px'};
+  height: 2px;
+  background: linear-gradient(90deg, transparent, ${marbleGold}, transparent);
+  opacity: ${props => props.$opacity || 0.4};
+`;
+
+const GoldRing = styled(FloatingAccent)`
+  width: ${props => props.$size || '40px'};
+  height: ${props => props.$size || '40px'};
+  border-radius: 50%;
+  border: 2px solid ${marbleGold};
+  opacity: ${props => props.$opacity || 0.3};
+`;
+
+const SubtleCross = styled(FloatingAccent)`
+  width: 20px;
+  height: 20px;
+  opacity: ${props => props.$opacity || 0.25};
+  
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    background: ${marbleGold};
+  }
+  
+  &::before {
+    width: 100%;
+    height: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  &::after {
+    width: 2px;
+    height: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+`;
+
+// Cascading elements container - fixed position overlay
+const CascadeContainer = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+`;
+
+const CascadeElement = styled.div`
+  position: absolute;
+  transition: transform 0.05s linear;
+`;
+
+// ============ STYLED COMPONENTS ============
+const PageWrapper = styled.div`
+  min-height: 100vh;
+  background: ${marbleWhite};
+  overflow-x: hidden;
+  color: ${marbleDarkGray};
+`;
+
+const HeroSection = styled.section`
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  perspective: 1000px;
+  overflow: hidden;
+  background: ${marbleWhite};
+`;
+
+const HeroContent = styled.div`
+  text-align: center;
+  z-index: 10;
+  max-width: 900px;
+  padding: 0 20px;
+  animation: ${slideUp} 1s ease-out;
+`;
+
+const Badge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: ${marbleLightGray};
+  border: 1px solid ${marbleGray};
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  margin-bottom: 24px;
+  
+  span {
+    color: ${marbleDarkGray};
+    font-weight: 600;
+  }
+`;
+
+const HeroTitle = styled.h1`
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 24px;
+  color: ${marbleDarkGray};
+`;
+
+const HeroSubtitle = styled.p`
+  font-size: clamp(1rem, 2.5vw, 1.35rem);
+  color: ${marbleGray};
+  max-width: 600px;
+  margin: 0 auto 40px;
+  line-height: 1.6;
+`;
+
+const CTAGroup = styled.div`
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+`;
+
+const PrimaryButton = styled(Link)`
+  background: ${marbleDarkGray};
+  color: ${marbleWhite};
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    color: ${marbleWhite};
+    background: ${marbleBlack};
+  }
+`;
+
+const SecondaryButton = styled(Link)`
+  background: ${marbleLightGray};
+  color: ${marbleDarkGray};
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-decoration: none;
+  border: 1px solid ${marbleGray};
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: ${marbleGray};
+    transform: translateY(-3px);
+    color: ${marbleDarkGray};
       }
-    };
+`;
 
-    // Start preloading immediately with no delay
-    preloadStockData();
-  }, []);
+// 3D Floating Elements Container
+const FloatingElements = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-style: preserve-3d;
+`;
 
-  useEffect(() => {
-    console.log(`Home: useEffect triggered for route ${location.pathname}`);
-    // Only run this effect when on Home page
-    if (location.pathname !== '/') {
-      console.log('Home: Not on Home page, skipping effect');
-      return;
+const FloatingImage = styled.img`
+  position: absolute;
+  border-radius: 20px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+  
+  ${props => props.$size === 'large' && `
+    width: 280px;
+    height: 280px;
+    object-fit: cover;
+  `}
+  
+  ${props => props.$size === 'medium' && `
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+  `}
+  
+  ${props => props.$size === 'small' && `
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+  `}
+  
+  @media (max-width: 768px) {
+    display: none;
     }
-    console.log('Home: On Home page, setting up scroll listeners');
+`;
 
-    let isBottomHalf = false; // Use local variable instead of state
-    
-    const updateBackground = (useBottomColor) => {
-      console.log(`Home: updateBackground called with useBottomColor = ${useBottomColor}`);
-      const pageTransition = document.querySelector('.page-transition');
-      const mainContent = document.querySelector('.main-content');
-      const appContainer = document.querySelector('.app-container');
-      const body = document.body;
-      const html = document.documentElement;
-      
-      const backgroundColor = useBottomColor ? '#E5E5E5' : '#F4F1E9';
-      const cssVar = useBottomColor ? 'var(--marbleLightGray)' : '#F4F1E9';
-      
-      if (pageTransition) {
-        pageTransition.style.backgroundColor = backgroundColor;
-      }
-      if (mainContent) {
-        mainContent.style.backgroundColor = cssVar;
-      }
-      if (appContainer) {
-        appContainer.style.backgroundColor = cssVar;
-      }
-      // Update navbar background using the centralized system
-      if (useBottomColor) {
-        setNavbarBackground('#E5E5E5'); // marbleLightGray
-        console.log('Navbar: Setting to marbleLightGray (#E5E5E5)');
-      } else {
-        setNavbarBackground('#F4F1E9'); // marbleWhite
-        console.log('Navbar: Setting to marbleWhite (#F4F1E9)');
-      }
-      if (body) {
-        body.style.backgroundColor = backgroundColor;
-      }
-      if (html) {
-        html.style.backgroundColor = backgroundColor;
-      }
-      // Update scrollbar to match the background
-      body.style.setProperty('--scrollbar-track-bg', backgroundColor, 'important');
-    };
-    
+const GlowOrb = styled.div`
+  position: absolute;
+  border-radius: 50%;
+  background: ${props => props.$color || `radial-gradient(circle, ${marbleGold}33, transparent 70%)`};
+  animation: ${pulse} ${props => props.$duration || '4s'} ease-in-out infinite;
+  filter: blur(40px);
+`;
+
+// Feature Sections
+const Section = styled.section`
+  padding: 120px 20px;
+  position: relative;
+  overflow: hidden;
+  background: ${marbleLightGray};
+`;
+
+const SectionInner = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+`;
+
+const FeatureGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px;
+  margin-top: 60px;
+`;
+
+const FeatureCard = styled.div`
+  background: ${marbleWhite};
+  border: 1px solid ${marbleGray};
+  border-radius: 24px;
+  padding: 40px;
+  transition: all 0.4s ease;
+  transform-style: preserve-3d;
+  
+  &:hover {
+    transform: translateY(-10px);
+    border-color: ${marbleGold};
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const FeatureIcon = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: ${marbleDarkGray};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 24px;
+`;
+
+const FeatureTitle = styled.h3`
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: ${marbleDarkGray};
+`;
+
+const FeatureDesc = styled.p`
+  color: ${marbleGray};
+  line-height: 1.6;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 20px;
+  color: ${marbleDarkGray};
+`;
+
+const SectionSubtitle = styled.p`
+  text-align: center;
+  color: ${marbleGray};
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto;
+`;
+
+// 3D Phone Mockup Section
+const PhoneSection = styled.section`
+  position: relative;
+  min-height: 100vh;
+  padding: 100px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${marbleWhite};
+  perspective: 2000px;
+`;
+
+const PhoneMockup = styled.div`
+  width: 300px;
+  height: 600px;
+  background: ${marbleDarkGray};
+  border-radius: 40px;
+  border: 3px solid ${marbleGray};
+  box-shadow: 
+    0 50px 100px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.08s ease-out, opacity 0.15s ease-out;
+  will-change: transform, opacity;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 24px;
+    background: ${marbleBlack};
+    border-radius: 12px;
+  }
+`;
+
+const PhoneScreen = styled.div`
+  position: absolute;
+  top: 50px;
+  left: 12px;
+  right: 12px;
+  bottom: 50px;
+  background: linear-gradient(180deg, ${marbleDarkGray}, ${marbleBlack});
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+`;
+
+const PhoneContent = styled.div`
+  text-align: center;
+  
+  img {
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+  }
+  
+  h4 {
+    color: ${marbleWhite};
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+  }
+  
+  p {
+    color: ${marbleGray};
+    font-size: 0.9rem;
+  }
+`;
+
+const FloatingStats = styled.div`
+  position: absolute;
+  background: ${marbleWhite};
+  border: 1px solid ${marbleGray};
+  border-radius: 16px;
+  padding: 16px 24px;
+  transform-style: preserve-3d;
+  transition: transform 0.08s ease-out, opacity 0.15s ease-out;
+  will-change: transform, opacity;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  
+  ${props => props.$position === 'left' && `
+    left: -120px;
+    top: 100px;
+  `}
+  
+  ${props => props.$position === 'right' && `
+    right: -120px;
+    bottom: 150px;
+  `}
+  
+  h5 {
+    color: ${marbleDarkGray};
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  
+  span {
+    color: ${marbleGray};
+    font-size: 0.85rem;
+  }
+`;
+
+// CTA Section
+const CTASection = styled.section`
+  padding: 120px 20px;
+  text-align: center;
+  position: relative;
+  background: ${marbleLightGray};
+`;
+
+const CTACard = styled.div`
+  max-width: 800px;
+  margin: 0 auto;
+  background: ${marbleWhite};
+  border: 1px solid ${marbleGray};
+  border-radius: 32px;
+  padding: 60px 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+`;
+
+// ============ COMPONENT ============
+function Home({ isLoggedIn }) {
+  const containerRef = useRef(null);
+  const [scrollY, setScrollY] = useState(0);
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
+
+  // Track scroll for 3D parallax effects
+  useEffect(() => {
+    let rafId;
     const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-      const scrollPercentage = scrollPosition / (documentHeight - windowHeight);
-      
-      // More aggressive detection for bottom area
-      const isAtBottom = scrollPosition + windowHeight >= documentHeight - 10; // 10px threshold
-      const isInBottomHalf = scrollPercentage > 0.4; // Lowered threshold
-      
-      // Change background when we're in the bottom area
-      if (isInBottomHalf || isAtBottom) {
-        if (!isBottomHalf) {
-          isBottomHalf = true;
-          console.log('Switching to bottom background (marbleLightGray)');
-          updateBackground(true);
-        }
-      } else {
-        if (isBottomHalf) {
-          isBottomHalf = false;
-          console.log('Switching to top background (marbleWhite)');
-          updateBackground(false);
-        }
-      }
-    };
-    
-    // Handle touch events for mobile overscroll
-    const handleTouchMove = (e) => {
-      const scrollPosition = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-      
-      // Check if we're at the bottom and trying to scroll further
-      if (scrollPosition + windowHeight >= documentHeight - 5) {
-        if (!isBottomHalf) {
-          isBottomHalf = true;
-          console.log('Touch: Switching to bottom background (marbleLightGray)');
-          updateBackground(true);
-        }
-      }
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setScrollY(window.scrollY);
+      });
     };
 
-    // Add smooth transition to multiple elements
-    const elements = ['.page-transition', '.main-content', '.app-container', '.navbar-color'];
-    elements.forEach(selector => {
-      const element = document.querySelector(selector);
-      if (element) {
-        element.style.transition = 'background-color 0.5s ease';
-      }
-    });
-    
-    // Add event listeners
+    const handleResize = () => {
+      setWindowHeight(window.innerHeight);
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('resize', handleResize);
     
-    // Cleanup
+    // Initial call
+    handleScroll();
+    
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('touchmove', handleTouchMove);
-      // Only reset page background, don't touch navbar (let App handle it)
-      const pageTransition = document.querySelector('.page-transition');
-      const mainContent = document.querySelector('.main-content');
-      const appContainer = document.querySelector('.app-container');
-      const body = document.body;
-      const html = document.documentElement;
-      
-      if (pageTransition) {
-        pageTransition.style.backgroundColor = '#F4F1E9';
-      }
-      if (mainContent) {
-        mainContent.style.backgroundColor = '#F4F1E9';
-      }
-      if (appContainer) {
-        appContainer.style.backgroundColor = '#F4F1E9';
-      }
-      if (body) {
-        body.style.backgroundColor = '#F4F1E9';
-      }
-      if (html) {
-        html.style.backgroundColor = '#F4F1E9';
-      }
-      body.style.setProperty('--scrollbar-track-bg', '#F4F1E9', 'important');
-      
-      console.log('Home page cleanup: Page background reset, navbar left for App to handle');
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(rafId);
     };
-  }, [location.pathname, setNavbarBackground, resetNavbarBackground]); // Include dependencies
+  }, []);
 
+  // Calculate scroll progress (0 to 1) for different sections
+  // Hero fades over first screen
+  const scrollProgress = Math.min(scrollY / windowHeight, 1);
+  
+  // Global scroll progress for continuous animations
+  const totalScrollProgress = scrollY / (document.body.scrollHeight - windowHeight || 1);
+  
+  // Testimonials section fade-in - triggers at 78% scroll (when testimonials are in view)
+  const testimonialProgress = Math.max(0, Math.min((totalScrollProgress - 0.68) * 8, 1));
+
+  // Cascading elements data - different sizes, positions, and speeds
+  const cascadeElements = [
+    { x: 5, size: 8, speed: 0.8, delay: 0 },
+    { x: 15, size: 6, speed: 1.2, delay: 0.1 },
+    { x: 25, size: 10, speed: 0.6, delay: 0.2 },
+    { x: 35, size: 5, speed: 1.4, delay: 0.05 },
+    { x: 45, size: 7, speed: 0.9, delay: 0.15 },
+    { x: 55, size: 9, speed: 1.1, delay: 0.25 },
+    { x: 65, size: 6, speed: 0.7, delay: 0.08 },
+    { x: 75, size: 8, speed: 1.3, delay: 0.18 },
+    { x: 85, size: 5, speed: 1.0, delay: 0.12 },
+    { x: 95, size: 7, speed: 0.85, delay: 0.22 },
+    { x: 10, size: 4, speed: 1.5, delay: 0.3 },
+    { x: 30, size: 6, speed: 0.75, delay: 0.35 },
+    { x: 50, size: 8, speed: 1.15, delay: 0.02 },
+    { x: 70, size: 5, speed: 0.95, delay: 0.28 },
+    { x: 90, size: 7, speed: 1.25, delay: 0.07 },
+  ];
 
   return (
-    <div>
-      {/* HERO SECTION */}
-      <div className="pt-cum">
-        <div className="text-center">
-          <h1 className="fw-bold mb-3 hero-title">
-            <Typewriter 
-              text="Invest smarter. Learn faster." 
-              speed={85}
-              className="fw-bold"
+    <PageWrapper ref={containerRef}>
+      {/* ============ CASCADING ELEMENTS ============ */}
+      <CascadeContainer>
+        {cascadeElements.map((el, i) => {
+          // Calculate Y position based on scroll - creates falling effect
+          const fallDistance = (scrollY * el.speed + el.delay * 1000) % (windowHeight + 200);
+          const opacity = fallDistance < 100 ? fallDistance / 100 : 
+                         fallDistance > windowHeight ? Math.max(0, 1 - (fallDistance - windowHeight) / 200) : 
+                         0.4;
+          
+          return (
+            <CascadeElement
+              key={i}
+              style={{
+                left: `${el.x}%`,
+                top: `${fallDistance - 100}px`,
+                width: `${el.size}px`,
+                height: `${el.size}px`,
+                borderRadius: '50%',
+                background: marbleGold,
+                opacity: opacity * 0.5,
+                transform: `rotate(${scrollY * el.speed * 0.5}deg)`
+              }}
             />
-          </h1>
-          <StockTicker stocks={preloadedStocks} />
-          <div className="d-flex gap-3 mt-4 justify-content-center">
-            <Link 
-              to={isLoggedIn ? "/dashboard" : "/signup"}
-              className="btn btn-light fw-bold px-4 py-2 shadow"
-            >
-              Get Started Free
-            </Link>
-            <Link
-              to={isLoggedIn ? "/dashboard" : "/signin"}
-              className="btn learn-more-btn fw-bold px-4 py-2 shadow"
-            >
-              Learn More
-            </Link>
-          </div>
+          );
+        })}
+      </CascadeContainer>
+
+      {/* ============ HERO SECTION ============ */}
+      <HeroSection>
+        {/* Glow Orbs */}
+        <GlowOrb 
+          style={{ width: 600, height: 600, top: '-200px', left: '-200px' }}
+          $color="radial-gradient(circle, rgba(102, 126, 234, 0.2), transparent 70%)"
+          $duration="6s"
+        />
+        <GlowOrb 
+          style={{ width: 500, height: 500, bottom: '-150px', right: '-150px' }}
+          $color="radial-gradient(circle, rgba(118, 75, 162, 0.2), transparent 70%)"
+          $duration="8s"
+        />
+        
+        {/* Floating 3D Images - Transforms based on scroll */}
+        <FloatingElements>
+          <FloatingImage 
+            src="/marbleWhitelogo.png" 
+            alt="Tickr"
+            $size="large"
+            style={{ 
+              top: '15%', 
+              left: '5%',
+              transform: `
+                perspective(1000px)
+                translateY(${scrollProgress * -150}px)
+                translateX(${scrollProgress * 50}px)
+                rotateY(${scrollProgress * 45}deg) 
+                rotateX(${scrollProgress * -20}deg)
+                rotateZ(${-15 + scrollProgress * 30}deg)
+                scale(${1 - scrollProgress * 0.3})
+              `,
+              opacity: Math.max(0.9 - scrollProgress * 0.9, 0)
+            }}
+          />
+          <FloatingImage 
+            src="/marbleDarkGray.png" 
+            alt="Tickr"
+            $size="medium"
+            style={{ 
+              top: '20%', 
+              right: '8%',
+              transform: `
+                perspective(1000px)
+                translateY(${scrollProgress * -200}px)
+                translateX(${scrollProgress * -80}px)
+                rotateY(${scrollProgress * -60}deg) 
+                rotateX(${scrollProgress * 15}deg)
+                rotateZ(${10 + scrollProgress * -40}deg)
+                scale(${1 - scrollProgress * 0.4})
+              `,
+              opacity: Math.max(0.85 - scrollProgress * 0.85, 0)
+            }}
+          />
+          <FloatingImage 
+            src="/marbleGraylogo.png" 
+            alt="Tickr"
+            $size="small"
+            style={{ 
+              bottom: '25%', 
+              left: '12%',
+              transform: `
+                perspective(1000px)
+                translateY(${scrollProgress * -100}px)
+                translateX(${scrollProgress * 100}px)
+                rotateY(${scrollProgress * 90}deg) 
+                rotateX(${scrollProgress * -30}deg)
+                rotateZ(${20 + scrollProgress * 60}deg)
+                scale(${1 - scrollProgress * 0.5})
+              `,
+              opacity: Math.max(0.8 - scrollProgress * 0.8, 0)
+            }}
+          />
+          <FloatingImage 
+            src="/marbleLightGraylogo.png" 
+            alt="Tickr"
+            $size="medium"
+            style={{ 
+              bottom: '15%', 
+              right: '10%',
+              transform: `
+                perspective(1000px)
+                translateY(${scrollProgress * -180}px)
+                translateX(${scrollProgress * -60}px)
+                rotateY(${scrollProgress * -50}deg) 
+                rotateX(${scrollProgress * 25}deg)
+                rotateZ(${-8 + scrollProgress * -50}deg)
+                scale(${1 - scrollProgress * 0.35})
+              `,
+              opacity: Math.max(0.85 - scrollProgress * 0.85, 0)
+            }}
+          />
+        </FloatingElements>
+
+        {/* Hero Content */}
+        <HeroContent style={{
+          transform: `translateY(${scrollProgress * 100}px)`,
+          opacity: Math.max(1 - scrollProgress * 1.5, 0)
+        }}>
+          <Badge>
+            <span>✨ Now in Beta</span>
+            <span>•</span>
+            <span>Paper Trading Live</span>
+          </Badge>
+          
+          <HeroTitle>
+            Master the Markets.<br />
+            Risk Nothing.
+          </HeroTitle>
+          
+          <HeroSubtitle>
+            Learn trading through interactive lessons, practice with $10,000 in virtual funds, 
+            and get AI-powered insights — all without risking a single dollar.
+          </HeroSubtitle>
+          
+          <CTAGroup>
+            <PrimaryButton to={isLoggedIn ? "/dashboard" : "/signup"}>
+              Start Trading Free
+            </PrimaryButton>
+            <SecondaryButton to={isLoggedIn ? "/learn" : "/signin"}>
+              Explore Lessons
+            </SecondaryButton>
+          </CTAGroup>
+        </HeroContent>
+
+      </HeroSection>
+
+      {/* ============ FEATURES SECTION ============ */}
+      <Section>
+        <SectionInner>
+          <SectionTitle>Everything You Need to Learn Trading</SectionTitle>
+          <SectionSubtitle>
+            From beginner lessons to advanced strategies, we've got you covered.
+          </SectionSubtitle>
+          
+          <FeatureGrid>
+            <FeatureCard>
+              <FeatureIcon>📊</FeatureIcon>
+              <FeatureTitle>Real-Time Charts</FeatureTitle>
+              <FeatureDesc>
+                Professional-grade charts with technical indicators, drawing tools, 
+                and real-time market data powered by Alpaca.
+              </FeatureDesc>
+            </FeatureCard>
+            
+            <FeatureCard>
+              <FeatureIcon>🎓</FeatureIcon>
+              <FeatureTitle>Interactive Lessons</FeatureTitle>
+              <FeatureDesc>
+                Learn at your own pace with gamified lessons, quizzes, and 
+                hands-on exercises. Earn XP and unlock achievements.
+              </FeatureDesc>
+            </FeatureCard>
+            
+            <FeatureCard>
+              <FeatureIcon>🤖</FeatureIcon>
+              <FeatureTitle>AI Trading Coach</FeatureTitle>
+              <FeatureDesc>
+                Get personalized guidance from our AI coach. Ask questions, 
+                analyze trades, and improve your strategy.
+              </FeatureDesc>
+            </FeatureCard>
+            
+            <FeatureCard>
+              <FeatureIcon>💰</FeatureIcon>
+              <FeatureTitle>Paper Trading</FeatureTitle>
+              <FeatureDesc>
+                Practice with $10,000 in virtual funds. Execute trades in 
+                real market conditions with zero risk.
+              </FeatureDesc>
+            </FeatureCard>
+            
+            <FeatureCard>
+              <FeatureIcon>🏆</FeatureIcon>
+              <FeatureTitle>Leaderboards</FeatureTitle>
+              <FeatureDesc>
+                Compete with other traders. Climb the ranks and prove 
+                your skills on the global leaderboard.
+              </FeatureDesc>
+            </FeatureCard>
+            
+            <FeatureCard>
+              <FeatureIcon>🛒</FeatureIcon>
+              <FeatureTitle>Rewards Shop</FeatureTitle>
+              <FeatureDesc>
+                Earn coins by learning and trading. Spend them on XP boosters, 
+                streak freezes, and exclusive items.
+              </FeatureDesc>
+            </FeatureCard>
+          </FeatureGrid>
+        </SectionInner>
+      </Section>
+
+      {/* ============ 3D PHONE SECTION ============ */}
+      <PhoneSection>
+        <div style={{ position: 'relative', transformStyle: 'preserve-3d' }}>
+          <PhoneMockup 
+            style={{ 
+              transform: `
+                perspective(1200px)
+                rotateY(${Math.sin(totalScrollProgress * Math.PI * 4) * 15}deg) 
+                rotateX(${Math.cos(totalScrollProgress * Math.PI * 4) * 10}deg)
+                rotateZ(${Math.sin(totalScrollProgress * Math.PI * 2) * 5}deg)
+              `
+            }}
+          >
+            <PhoneScreen>
+              <PhoneContent>
+                <img src="/logo.png" alt="Tickr" />
+                <h4>Tickr</h4>
+                <p>Your pocket trading mentor</p>
+                <div style={{ 
+                  marginTop: '20px',
+                  background: `${marbleGray}33`,
+                  borderRadius: '12px',
+                  padding: '12px'
+                }}>
+                  <div style={{ color: marbleGold, fontSize: '1.5rem', fontWeight: '700' }}>
+                    +$1,247.32
+                  </div>
+                  <div style={{ color: marbleGray, fontSize: '0.8rem' }}>
+                    Today's P&L
+                  </div>
+                </div>
+              </PhoneContent>
+            </PhoneScreen>
+          </PhoneMockup>
+          
+          <FloatingStats 
+            $position="left" 
+            style={{ 
+              transform: `
+                perspective(1000px)
+                translateX(${Math.sin(totalScrollProgress * Math.PI * 3) * 30}px)
+                translateY(${Math.cos(totalScrollProgress * Math.PI * 3) * 20}px)
+                rotateY(${Math.sin(totalScrollProgress * Math.PI * 2) * 10}deg)
+              `
+            }}
+          >
+            <h5>10K+</h5>
+            <span>Virtual Trades</span>
+          </FloatingStats>
+          
+          <FloatingStats 
+            $position="right" 
+            style={{ 
+              transform: `
+                perspective(1000px)
+                translateX(${Math.cos(totalScrollProgress * Math.PI * 3) * 30}px)
+                translateY(${Math.sin(totalScrollProgress * Math.PI * 3) * 20}px)
+                rotateY(${Math.cos(totalScrollProgress * Math.PI * 2) * -10}deg)
+              `
+            }}
+          >
+            <h5>50+</h5>
+            <span>Lessons</span>
+          </FloatingStats>
         </div>
+      </PhoneSection>
+
+      {/* ============ HOW IT WORKS SECTION ============ */}
+      <Section style={{ background: marbleWhite, position: 'relative', overflow: 'hidden' }}>
+        {/* Floating accents */}
+        <GoldDot 
+          $size="12px" 
+          style={{ 
+            top: '15%', 
+            left: '8%',
+            transform: `translateY(${Math.sin(totalScrollProgress * Math.PI * 2) * 20}px)`
+          }} 
+        />
+        <GoldDot 
+          $size="6px" 
+          $opacity={0.4}
+          style={{ 
+            top: '25%', 
+            right: '12%',
+            transform: `translateY(${Math.cos(totalScrollProgress * Math.PI * 2) * 15}px)`
+          }} 
+        />
+        <GoldLine 
+          $width="80px"
+          style={{ 
+            bottom: '20%', 
+            left: '5%',
+            transform: `translateX(${Math.sin(totalScrollProgress * Math.PI * 3) * 10}px) rotate(${totalScrollProgress * 20}deg)`
+          }} 
+        />
+        <GoldRing 
+          $size="30px"
+          style={{ 
+            top: '60%', 
+            right: '8%',
+            transform: `rotate(${totalScrollProgress * 90}deg) scale(${0.9 + Math.sin(totalScrollProgress * Math.PI * 2) * 0.1})`
+          }} 
+        />
+        
+        <SectionInner>
+          <SectionTitle>How It Works</SectionTitle>
+          <SectionSubtitle>
+            Start trading in minutes, not months. Three simple steps to begin your journey.
+          </SectionSubtitle>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+            gap: '40px', 
+            marginTop: '60px' 
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                width: '80px', 
+                height: '80px', 
+                borderRadius: '50%', 
+                background: marbleDarkGray, 
+                color: marbleWhite,
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '2rem',
+                fontWeight: '700',
+                margin: '0 auto 20px'
+              }}>1</div>
+              <h3 style={{ color: marbleDarkGray, marginBottom: '12px' }}>Sign Up Free</h3>
+              <p style={{ color: marbleGray }}>Create your account in seconds. No credit card required.</p>
       </div>
 
-      {/* SCROLL ANIMATED SECTIONS */}
-      <div className="container mt-5 pb-5">
-        <FadeInSection>
-          <div className="row align-items-center mb-5">
-            <div className="col-md-6">
-              <img src="/dashboard-placeholder.jpg" alt="Track Your Portfolio Dashboard" className="img-fluid rounded shadow" />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                width: '80px', 
+                height: '80px', 
+                borderRadius: '50%', 
+                background: marbleDarkGray, 
+                color: marbleWhite,
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '2rem',
+                fontWeight: '700',
+                margin: '0 auto 20px'
+              }}>2</div>
+              <h3 style={{ color: marbleDarkGray, marginBottom: '12px' }}>Learn & Practice</h3>
+              <p style={{ color: marbleGray }}>Complete interactive lessons and trade with virtual money.</p>
             </div>
-            <div className="col-md-6">
-              <CascadeText
-                lines={[
-                  <h2 className="fw-bold mb-3">Track Your Portfolio</h2>,
-                  <p className="lead mb-1 text-muted-light">Monitor your investments in real time with beautiful charts and analytics.</p>,
-                  <p className="lead mb-1">See your gains, losses, and trends at a glance.</p>,
-                  <p className="lead mb-1">Stay informed with instant portfolio updates.</p>
-                ]}
-              />
-            </div>
-          </div>
-        </FadeInSection>
-        <FadeInSection delay={150}>
-          <div className="row align-items-center flex-md-row-reverse mb-5">
-            <div className="col-md-6">
-              <img src="https://placehold.co/500x300" alt="Placeholder 2" className="img-fluid rounded shadow" />
-            </div>
-            <div className="col-md-6">
-              <CascadeText
-                lines={[
-                  <h2 className="fw-bold mb-3">Learn With Interactive Lessons</h2>,
-                  <p className="lead mb-1 text-muted-light">Boost your investing knowledge with hands-on, gamified learning modules.</p>,
-                  <p className="lead mb-1">Quizzes and challenges keep you engaged.</p>,
-                  <p className="lead mb-1">Track your progress and earn badges as you learn.</p>
-                ]}
-              />
-            </div>
-          </div>
-        </FadeInSection>
-        <FadeInSection delay={300}>
-          <div className="row align-items-center mb-5">
-            <div className="col-md-6">
-              <img src="https://placehold.co/500x300" alt="Placeholder 3" className="img-fluid rounded shadow" />
-            </div>
-            <div className="col-md-6">
-              <CascadeText
-                lines={[
-                  <h2 className="fw-bold mb-3">Simulate Trades</h2>,
-                  <p className="lead mb-1 text-muted-light">Practice trading stocks with zero risk using our paper trading platform.</p>,
-                  <p className="lead mb-1">Test your strategies in real market conditions.</p>,
-                  <p className="lead mb-1">Compete with friends and climb the leaderboard.</p>
-                ]}
-              />
+            
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                width: '80px', 
+                height: '80px', 
+                borderRadius: '50%', 
+                background: marbleDarkGray, 
+                color: marbleWhite,
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '2rem',
+                fontWeight: '700',
+                margin: '0 auto 20px'
+              }}>3</div>
+              <h3 style={{ color: marbleDarkGray, marginBottom: '12px' }}>Master the Markets</h3>
+              <p style={{ color: marbleGray }}>Build confidence and skills before risking real capital.</p>
             </div>
           </div>
-        </FadeInSection>
-        <FadeInSection delay={450}>
-          <div className="row align-items-center mb-5">
-            <div className="col-md-6">
-              <img src="/dashboard-placeholder.jpg" alt="Track Your Portfolio Dashboard" className="img-fluid rounded shadow" />
+        </SectionInner>
+      </Section>
+
+      {/* ============ STATS SECTION ============ */}
+      <Section style={{ background: marbleDarkGray, position: 'relative', overflow: 'hidden' }}>
+        {/* Subtle light accents on dark background */}
+        <GoldDot 
+          $size="10px" 
+          $opacity={0.5}
+          style={{ 
+            top: '20%', 
+            left: '15%',
+            transform: `translateY(${Math.cos(totalScrollProgress * Math.PI * 2.5) * 25}px)`
+          }} 
+        />
+        <GoldDot 
+          $size="8px" 
+          $opacity={0.3}
+          style={{ 
+            bottom: '25%', 
+            right: '10%',
+            transform: `translateY(${Math.sin(totalScrollProgress * Math.PI * 2.5) * 20}px)`
+          }} 
+        />
+        <GoldLine 
+          $width="100px"
+          $opacity={0.3}
+          style={{ 
+            top: '50%', 
+            right: '5%',
+            transform: `translateY(${Math.sin(totalScrollProgress * Math.PI * 3) * 15}px) rotate(${-30 + totalScrollProgress * 15}deg)`
+          }} 
+        />
+        <SubtleCross 
+          $opacity={0.2}
+          style={{ 
+            top: '30%', 
+            left: '6%',
+            transform: `rotate(${totalScrollProgress * 45}deg)`
+          }} 
+        />
+        
+        <SectionInner>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '40px',
+            textAlign: 'center'
+          }}>
+            <div>
+              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleGold, marginBottom: '8px' }}>$10K</h2>
+              <p style={{ color: marbleGray }}>Virtual Trading Balance</p>
             </div>
-            <div className="col-md-6">
-              <CascadeText
-                lines={[
-                  <h2 className="fw-bold mb-3">Track Your Portfolio</h2>,
-                  <p className="lead mb-1 text-muted-light">Monitor your investments in real time with beautiful charts and analytics.</p>,
-                  <p className="lead mb-1">See your gains, losses, and trends at a glance.</p>,
-                  <p className="lead mb-1">Stay informed with instant portfolio updates.</p>
-                ]}
-              />
+            <div>
+              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleWhite, marginBottom: '8px' }}>50+</h2>
+              <p style={{ color: marbleGray }}>Interactive Lessons</p>
+            </div>
+            <div>
+              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleGold, marginBottom: '8px' }}>24/7</h2>
+              <p style={{ color: marbleGray }}>AI Coach Access</p>
+            </div>
+            <div>
+              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleWhite, marginBottom: '8px' }}>$0</h2>
+              <p style={{ color: marbleGray }}>Risk While Learning</p>
             </div>
           </div>
-        </FadeInSection>
-        <FadeInSection delay={600}>
-          <div className="row align-items-center flex-md-row-reverse mb-5">
-            <div className="col-md-6">
-              <img src="https://placehold.co/500x300" alt="Placeholder 2" className="img-fluid rounded shadow" />
+        </SectionInner>
+      </Section>
+
+      {/* ============ TESTIMONIALS SECTION ============ */}
+      <Section style={{ background: marbleLightGray, position: 'relative', overflow: 'hidden' }}>
+        {/* Floating accents */}
+        <GoldRing 
+          $size="50px"
+          $opacity={0.25}
+          style={{ 
+            top: '10%', 
+            right: '10%',
+            transform: `rotate(${totalScrollProgress * 120}deg)`
+          }} 
+        />
+        <GoldDot 
+          $size="14px" 
+          $opacity={0.5}
+          style={{ 
+            bottom: '15%', 
+            left: '8%',
+            transform: `translateY(${Math.sin(totalScrollProgress * Math.PI * 2) * 30}px)`
+          }} 
+        />
+        <GoldDot 
+          $size="6px" 
+          $opacity={0.35}
+          style={{ 
+            top: '40%', 
+            left: '5%',
+            transform: `translateX(${Math.cos(totalScrollProgress * Math.PI * 3) * 15}px)`
+          }} 
+        />
+        <GoldLine 
+          $width="70px"
+          $opacity={0.35}
+          style={{ 
+            bottom: '30%', 
+            right: '6%',
+            transform: `rotate(${45 + totalScrollProgress * 25}deg)`
+          }} 
+        />
+        <SubtleCross 
+          $opacity={0.2}
+          style={{ 
+            top: '65%', 
+            right: '15%',
+            transform: `rotate(${totalScrollProgress * 60}deg)`
+          }} 
+        />
+        
+        <SectionInner>
+          <SectionTitle>What Our Users Say</SectionTitle>
+          <SectionSubtitle>
+            Join thousands who've started their trading journey with Tickr.
+          </SectionSubtitle>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+            gap: '32px', 
+            marginTop: '60px' 
+          }}>
+            {/* Testimonial 1 - First to fade in */}
+            <div style={{ 
+              background: marbleWhite, 
+              padding: '32px', 
+              borderRadius: '20px',
+              border: `1px solid ${marbleGray}`,
+              opacity: Math.min(testimonialProgress * 1.5, 1),
+              transform: `translateY(${(1 - Math.min(testimonialProgress * 1.5, 1)) * 80}px) scale(${0.9 + Math.min(testimonialProgress * 1.5, 1) * 0.1})`,
+              transition: 'box-shadow 0.3s ease',
+              boxShadow: testimonialProgress > 0.3 ? '0 10px 40px rgba(0,0,0,0.08)' : 'none'
+            }}>
+              <p style={{ color: marbleDarkGray, fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '20px' }}>
+                "Finally, a platform that doesn't throw you into the deep end. The paper trading feature let me make mistakes without losing real money."
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: marbleGray }} />
+                <div>
+                  <strong style={{ color: marbleDarkGray }}>Alex M.</strong>
+                  <p style={{ color: marbleGray, fontSize: '0.85rem' }}>Computer Science Student</p>
+                </div>
+              </div>
             </div>
-            <div className="col-md-6">
-              <CascadeText
-                lines={[
-                  <h2 className="fw-bold mb-3">Learn With Interactive Lessons</h2>,
-                  <p className="lead mb-1 text-muted-light">Boost your investing knowledge with hands-on, gamified learning modules.</p>,
-                  <p className="lead mb-1">Quizzes and challenges keep you engaged.</p>,
-                  <p className="lead mb-1">Track your progress and earn badges as you learn.</p>
-                ]}
-              />
+            
+            {/* Testimonial 2 - Slight delay */}
+            <div style={{ 
+              background: marbleWhite, 
+              padding: '32px', 
+              borderRadius: '20px',
+              border: `1px solid ${marbleGray}`,
+              opacity: Math.min(Math.max((testimonialProgress - 0.2) * 1.5, 0), 1),
+              transform: `translateY(${(1 - Math.min(Math.max((testimonialProgress - 0.2) * 1.5, 0), 1)) * 80}px) scale(${0.9 + Math.min(Math.max((testimonialProgress - 0.2) * 1.5, 0), 1) * 0.1})`,
+              transition: 'box-shadow 0.3s ease',
+              boxShadow: testimonialProgress > 0.5 ? '0 10px 40px rgba(0,0,0,0.08)' : 'none'
+            }}>
+              <p style={{ color: marbleDarkGray, fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '20px' }}>
+                "The AI coach is like having a mentor available 24/7. It explained concepts I'd struggled with for months in just minutes."
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: marbleGray }} />
+                <div>
+                  <strong style={{ color: marbleDarkGray }}>Sarah K.</strong>
+                  <p style={{ color: marbleGray, fontSize: '0.85rem' }}>Marketing Professional</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Testimonial 3 - Last to fade in */}
+            <div style={{ 
+              background: marbleWhite, 
+              padding: '32px', 
+              borderRadius: '20px',
+              border: `1px solid ${marbleGray}`,
+              opacity: Math.min(Math.max((testimonialProgress - 0.4) * 1.5, 0), 1),
+              transform: `translateY(${(1 - Math.min(Math.max((testimonialProgress - 0.4) * 1.5, 0), 1)) * 80}px) scale(${0.9 + Math.min(Math.max((testimonialProgress - 0.4) * 1.5, 0), 1) * 0.1})`,
+              transition: 'box-shadow 0.3s ease',
+              boxShadow: testimonialProgress > 0.7 ? '0 10px 40px rgba(0,0,0,0.08)' : 'none'
+            }}>
+              <p style={{ color: marbleDarkGray, fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '20px' }}>
+                "The gamification keeps me coming back. I've learned more about investing in 2 weeks than I did in 2 years of reading."
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: marbleGray }} />
+                <div>
+                  <strong style={{ color: marbleDarkGray }}>James L.</strong>
+                  <p style={{ color: marbleGray, fontSize: '0.85rem' }}>Recent Graduate</p>
+                </div>
+              </div>
             </div>
           </div>
-        </FadeInSection>
-        <FadeInSection delay={750}>
-          <div className="row align-items-center mb-5">
-            <div className="col-md-6">
-              <img src="https://placehold.co/500x300" alt="Placeholder 3" className="img-fluid rounded shadow" />
-            </div>
-            <div className="col-md-6">
-              <CascadeText
-                lines={[
-                  <h2 className="fw-bold mb-3">Simulate Trades</h2>,
-                  <p className="lead mb-1 text-muted-light">Practice trading stocks with zero risk using our paper trading platform.</p>,
-                  <p className="lead mb-1">Test your strategies in real market conditions.</p>,
-                  <p className="lead mb-1">Compete with friends and climb the leaderboard.</p>
-                ]}
-              />
-            </div>
-          </div>
-        </FadeInSection>
-      </div>
-    </div>
+        </SectionInner>
+      </Section>
+
+      {/* ============ CTA SECTION ============ */}
+      <CTASection style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* Final accents */}
+        <GoldDot 
+          $size="10px" 
+          $opacity={0.5}
+          style={{ 
+            top: '20%', 
+            left: '10%',
+            transform: `translateY(${Math.sin(totalScrollProgress * Math.PI * 2) * 15}px)`
+          }} 
+        />
+        <GoldRing 
+          $size="35px"
+          $opacity={0.25}
+          style={{ 
+            bottom: '25%', 
+            right: '12%',
+            transform: `rotate(${totalScrollProgress * 180}deg)`
+          }} 
+        />
+        
+        <CTACard>
+          <SectionTitle style={{ marginBottom: '16px' }}>
+            Ready to Start Your Journey?
+          </SectionTitle>
+          <SectionSubtitle style={{ marginBottom: '32px' }}>
+            Join thousands of aspiring traders learning the smart way.
+          </SectionSubtitle>
+          <CTAGroup>
+            <PrimaryButton to={isLoggedIn ? "/dashboard" : "/signup"}>
+              Get Started — It's Free
+            </PrimaryButton>
+          </CTAGroup>
+        </CTACard>
+      </CTASection>
+
+      {/* Footer */}
+      <footer style={{ 
+        padding: '40px 20px', 
+        textAlign: 'center', 
+        borderTop: `1px solid ${marbleGray}`,
+        background: marbleWhite
+      }}>
+        <p style={{ color: marbleGray, fontSize: '0.9rem' }}>
+          © {new Date().getFullYear()} Tickr. Learn responsibly. Paper trading only.
+        </p>
+      </footer>
+
+    </PageWrapper>
   );
 }
 
