@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import { marbleWhite, marbleLightGray, marbleGray, marbleDarkGray, marbleBlack, marbleGold } from "../marblePalette";
 
 // ============ ANIMATIONS ============
@@ -12,6 +12,61 @@ const pulse = keyframes`
 const slideUp = keyframes`
   from { opacity: 0; transform: translateY(60px); }
   to { opacity: 1; transform: translateY(0); }
+`;
+
+const shimmerSweep = keyframes`
+  0% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+`;
+
+const StatValue = styled.h2`
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  display: inline-block;
+  position: relative;
+  
+  ${props => props.$isGold ? css`
+    /* Top layer: thin bright tracer line; Bottom layer: base gold shimmer */
+    background:
+      linear-gradient(
+        -45deg,
+        transparent 49%,
+        rgba(255, 255, 255, 1) 50%,
+        transparent 51%
+      ),
+      linear-gradient(
+        -45deg,
+        transparent 48%,
+        rgba(255, 255, 255, 0.95) 50%,
+        transparent 52%
+      ),
+      linear-gradient(
+        -45deg,
+        #E6C87A 0%,
+        #F0D586 35%,
+        #FFFFFF 50%,
+        #F0D586 65%,
+        #E6C87A 100%
+      );
+    background-size: 400% 400%, 400% 400%, 400% 400%;
+    background-position: 100% 100%, 100% 100%, 100% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    will-change: background-position;
+  ` : css`
+    color: #F4F1E9;
+  `}
+  
+  ${props => props.$isGold && props.$animate && css`
+    animation: ${shimmerSweep} 2.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  `}
 `;
 
 // Floating accent elements
@@ -446,8 +501,10 @@ const CTACard = styled.div`
 // ============ COMPONENT ============
 function Home({ isLoggedIn }) {
   const containerRef = useRef(null);
+  const statsRef = useRef(null);
   const [scrollY, setScrollY] = useState(0);
   const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
+  const [statsVisible, setStatsVisible] = useState(false);
 
   // Track scroll for 3D parallax effects
   useEffect(() => {
@@ -474,6 +531,18 @@ function Home({ isLoggedIn }) {
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(rafId);
     };
+  }, []);
+
+  useEffect(() => {
+    if (!statsRef.current || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setStatsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.0 }
+    );
+    observer.observe(statsRef.current);
+    return () => observer.disconnect();
   }, []);
 
   // Calculate scroll progress (0 to 1) for different sections
@@ -930,7 +999,7 @@ function Home({ isLoggedIn }) {
       </Section>
 
       {/* ============ STATS SECTION ============ */}
-      <Section style={{ background: marbleDarkGray, position: 'relative', overflow: 'hidden' }}>
+      <Section ref={statsRef} style={{ background: marbleDarkGray, position: 'relative', overflow: 'hidden' }}>
         {/* Subtle light accents on dark background */}
         <GoldDot 
           $size="10px" 
@@ -976,19 +1045,19 @@ function Home({ isLoggedIn }) {
             textAlign: 'center'
           }}>
             <div>
-              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleGold, marginBottom: '8px' }}>$10K</h2>
+              <StatValue $isGold $animate={statsVisible}>$10K</StatValue>
               <p style={{ color: marbleGray }}>Virtual Trading Balance</p>
             </div>
             <div>
-              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleWhite, marginBottom: '8px' }}>50+</h2>
+              <StatValue>50+</StatValue>
               <p style={{ color: marbleGray }}>Interactive Lessons</p>
             </div>
             <div>
-              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleGold, marginBottom: '8px' }}>24/7</h2>
+              <StatValue $isGold $animate={statsVisible}>24/7</StatValue>
               <p style={{ color: marbleGray }}>AI Coach Access</p>
             </div>
             <div>
-              <h2 style={{ fontSize: '3.5rem', fontWeight: '800', color: marbleWhite, marginBottom: '8px' }}>$0</h2>
+              <StatValue>$0</StatValue>
               <p style={{ color: marbleGray }}>Risk While Learning</p>
             </div>
           </div>
