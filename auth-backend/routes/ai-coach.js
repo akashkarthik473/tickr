@@ -360,25 +360,13 @@ router.post('/chat', async (req, res) => {
       return res.json({ success: true, response: content });
     }
 
-      // Fallback to Ollama
-    const aiPrompt = generateChatPrompt(message, scenario, chatHistory || []);
-    const baseUrl = process.env.OLLAMA_BASE_URL;
-    const model = process.env.OLLAMA_MODEL;
-
-    if (!baseUrl || !model) {
-      return res.status(503).json({
-        success: false,
-        error: 'AI chat is not configured',
-        details: 'Add GEMINI_API_KEY or configure OLLAMA_BASE_URL/OLLAMA_MODEL.',
-      });
-    }
-
-    const response = await axios.post(
-      `${baseUrl}/api/generate`,
-      { model, prompt: aiPrompt, stream: false, options: { temperature: 0.7, top_p: 0.9, max_tokens: 1000, num_predict: 512 } },
-      { timeout: 90000 }
-    );
-    return res.json({ success: true, response: response.data.response });
+    // If Gemini is not configured, return 503 immediately.
+    // We are intentionally disabling Ollama fallback to ensure we know exactly which model is being used.
+    return res.status(503).json({
+      success: false,
+      error: 'AI chat is not configured',
+      details: 'Gemini API key is missing. Please configure GEMINI_API_KEY in the backend environment variables.',
+    });
     } catch (error) {
       console.error('[AI-CHAT] Error:', error?.response?.data || error.message);
       
@@ -460,44 +448,52 @@ router.post('/analyze', async (req, res) => {
         }
       }
       
-      // Validate required fields exist
-      if (!parsed.totalScore && parsed.totalScore !== 0) {
-        parsed.totalScore = 50; // Default score if missing
+      // Validate required fields exist and ensure full structure
+      if (!parsed || typeof parsed !== 'object') {
+        parsed = {};
       }
-      if (!parsed.coaching) {
-        parsed.coaching = {
-          overall: 'Analysis completed successfully',
-          marketPsychology: 'Review market psychology concepts',
-          fundamentals: 'Consider fundamental factors',
-          technicalAnalysis: 'Apply technical analysis',
-          riskManagement: 'Focus on risk management',
-          nextSteps: ['Review trading concepts', 'Practice more scenarios']
+      
+      // 1. Ensure totalScore exists
+      if (typeof parsed.totalScore !== 'number') {
+        parsed.totalScore = 50;
+      }
+      
+      // 2. Ensure breakdown exists
+      if (!parsed.breakdown) {
+        parsed.breakdown = {
+          decisionQuality: 10,
+          timing: 10,
+          reasoning: 10,
+          riskManagement: 10,
+          marketUnderstanding: 10
         };
       }
+      
+      // 3. Ensure coaching object exists
+      if (!parsed.coaching) {
+        parsed.coaching = {};
+      }
+      
+      // 4. Ensure all coaching fields exist with safe defaults
+      parsed.coaching.overall = parsed.coaching.overall || 'Analysis completed, but detailed feedback is unavailable.';
+      parsed.coaching.strengths = Array.isArray(parsed.coaching.strengths) ? parsed.coaching.strengths : ['Decision noted'];
+      parsed.coaching.improvements = Array.isArray(parsed.coaching.improvements) ? parsed.coaching.improvements : ['Continue practicing'];
+      parsed.coaching.marketPsychology = parsed.coaching.marketPsychology || 'Consider how market sentiment affects price action.';
+      parsed.coaching.fundamentals = parsed.coaching.fundamentals || 'Review the fundamental drivers for this asset.';
+      parsed.coaching.technicalAnalysis = parsed.coaching.technicalAnalysis || 'Look for key support and resistance levels.';
+      parsed.coaching.riskManagement = parsed.coaching.riskManagement || 'Always consider your risk-reward ratio.';
+      parsed.coaching.nextSteps = Array.isArray(parsed.coaching.nextSteps) ? parsed.coaching.nextSteps : ['Review the scenario details', 'Try another trade'];
       
       return res.json({ success: true, analysis: parsed });
     }
 
-    // Fallback to Ollama path
-    const aiPrompt = generateAIPrompt(userDecisions, scenario, optimalStrategy);
-    const baseUrl = process.env.OLLAMA_BASE_URL;
-    const model = process.env.OLLAMA_MODEL;
-
-    if (!baseUrl || !model) {
-      return res.status(503).json({
-        success: false,
-        error: 'AI analysis is not configured',
-        details: 'Add GEMINI_API_KEY or configure OLLAMA_BASE_URL/OLLAMA_MODEL.',
-      });
-    }
-
-    const response = await axios.post(
-      `${baseUrl}/api/generate`,
-      { model, prompt: aiPrompt, stream: false, options: { temperature: 0.7, top_p: 0.9, max_tokens: 1200, num_predict: 512 } },
-      { timeout: 120000 }
-    );
-    const aiAnalysis = parseAIResponse(response.data.response);
-    return res.json({ success: true, analysis: aiAnalysis });
+    // If Gemini is not configured, return 503 immediately.
+    // We are intentionally disabling Ollama fallback to ensure we know exactly which model is being used.
+    return res.status(503).json({
+      success: false,
+      error: 'AI analysis is not configured',
+      details: 'Gemini API key is missing. Please configure GEMINI_API_KEY in the backend environment variables.',
+    });
   } catch (error) {
     console.error('[AI-ANALYZE] Error:', error?.response?.data || error.message);
     

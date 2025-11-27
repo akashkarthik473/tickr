@@ -224,7 +224,10 @@ function AICoach() {
     chatMessages,
     setChatMessages,
     addMessage,
-    resetChat
+    resetChat,
+    isLoading: chatLoading,
+    error: chatError,
+    sendMessage
   } = useCoachChat(scenario, bouncePhase === 'done' || bouncePhase === 'idle');
 
   // Derive initial as-of date based on puzzle type for clarity
@@ -385,58 +388,61 @@ function AICoach() {
       });
 
       const result = await api.analyzeDecision({
-        userDecisions: [decision],
-        scenario: scenario.scenario,
-        optimalStrategy: scenario.scenario.optimalStrategy
+          userDecisions: [decision],
+          scenario: scenario.scenario,
+          optimalStrategy: scenario.scenario.optimalStrategy
       });
       
       if (result.success) {
-        const analysis = result.analysis;
+        const analysis = result.analysis || {};
         const breakdown = analysis.breakdown || {};
+        const coaching = analysis.coaching || {};
         
-        let analysisContent = `🎯 **Analysis Complete!**\n\n**Your Score: ${analysis.totalScore}/100**\n\n`;
+        let analysisContent = `🎯 **Analysis Complete!**\n\n**Your Score: ${analysis.totalScore ?? 0}/100**\n\n`;
         
         // Add breakdown if available
         if (breakdown.decisionQuality !== undefined) {
           analysisContent += `## Score Breakdown:\n`;
-          analysisContent += `• **Decision Quality**: ${breakdown.decisionQuality}/20\n`;
-          analysisContent += `• **Timing**: ${breakdown.timing}/20\n`;
-          analysisContent += `• **Reasoning**: ${breakdown.reasoning}/20\n`;
-          analysisContent += `• **Risk Management**: ${breakdown.riskManagement}/20\n`;
-          analysisContent += `• **Market Understanding**: ${breakdown.marketUnderstanding}/20\n\n`;
+          analysisContent += `• **Decision Quality**: ${breakdown.decisionQuality ?? 0}/20\n`;
+          analysisContent += `• **Timing**: ${breakdown.timing ?? 0}/20\n`;
+          analysisContent += `• **Reasoning**: ${breakdown.reasoning ?? 0}/20\n`;
+          analysisContent += `• **Risk Management**: ${breakdown.riskManagement ?? 0}/20\n`;
+          analysisContent += `• **Market Understanding**: ${breakdown.marketUnderstanding ?? 0}/20\n\n`;
         }
         
         // Overall assessment
-        analysisContent += `## Overall Assessment:\n${analysis.coaching.overall}\n\n`;
+        if (coaching.overall) {
+            analysisContent += `## Overall Assessment:\n${coaching.overall}\n\n`;
+        }
         
         // Strengths
-        if (analysis.coaching.strengths && analysis.coaching.strengths.length > 0) {
-          analysisContent += `## What You Did Well:\n${analysis.coaching.strengths.map(s => `• ${s}`).join('\n')}\n\n`;
+        if (coaching.strengths && Array.isArray(coaching.strengths) && coaching.strengths.length > 0) {
+          analysisContent += `## What You Did Well:\n${coaching.strengths.map(s => `• ${s}`).join('\n')}\n\n`;
         }
         
         // Areas for improvement
-        if (analysis.coaching.improvements && analysis.coaching.improvements.length > 0) {
-          analysisContent += `## Areas to Improve:\n${analysis.coaching.improvements.map(i => `• ${i}`).join('\n')}\n\n`;
+        if (coaching.improvements && Array.isArray(coaching.improvements) && coaching.improvements.length > 0) {
+          analysisContent += `## Areas to Improve:\n${coaching.improvements.map(i => `• ${i}`).join('\n')}\n\n`;
         }
         
         // Key insights
         analysisContent += `## Key Insights:\n`;
-        if (analysis.coaching.marketPsychology) {
-          analysisContent += `### Market Psychology:\n${analysis.coaching.marketPsychology}\n\n`;
+        if (coaching.marketPsychology) {
+          analysisContent += `### Market Psychology:\n${coaching.marketPsychology}\n\n`;
         }
-        if (analysis.coaching.fundamentals) {
-          analysisContent += `### Fundamental Analysis:\n${analysis.coaching.fundamentals}\n\n`;
+        if (coaching.fundamentals) {
+          analysisContent += `### Fundamental Analysis:\n${coaching.fundamentals}\n\n`;
         }
-        if (analysis.coaching.technicalAnalysis) {
-          analysisContent += `### Technical Analysis:\n${analysis.coaching.technicalAnalysis}\n\n`;
+        if (coaching.technicalAnalysis) {
+          analysisContent += `### Technical Analysis:\n${coaching.technicalAnalysis}\n\n`;
         }
-        if (analysis.coaching.riskManagement) {
-          analysisContent += `### Risk Management:\n${analysis.coaching.riskManagement}\n\n`;
+        if (coaching.riskManagement) {
+          analysisContent += `### Risk Management:\n${coaching.riskManagement}\n\n`;
         }
         
         // Next steps
-        if (analysis.coaching.nextSteps && analysis.coaching.nextSteps.length > 0) {
-          analysisContent += `## Next Steps:\n${analysis.coaching.nextSteps.map(step => `• ${step}`).join('\n')}\n`;
+        if (coaching.nextSteps && Array.isArray(coaching.nextSteps) && coaching.nextSteps.length > 0) {
+          analysisContent += `## Next Steps:\n${coaching.nextSteps.map(step => `• ${step}`).join('\n')}\n`;
         }
         
         // Scenario comparison
@@ -1307,6 +1313,10 @@ function AICoach() {
             scenario={scenario}
             enabled={bouncePhase === 'done' || bouncePhase === 'idle'}
             disabled={scenarioCompleted}
+            messages={chatMessages}
+            onSendMessage={sendMessage}
+            isLoading={chatLoading}
+            error={chatError}
           />
 
           {/* Trading Actions */}

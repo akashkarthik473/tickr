@@ -119,15 +119,31 @@ npm install
 
 Create a `.env` file in `auth-backend/`:
 ```env
+# Required
 PORT=5001
-JWT_SECRET=replace-with-strong-secret
+JWT_SECRET=replace-with-strong-secret-min-16-chars
 ALPACA_API_KEY=your-alpaca-key
 ALPACA_SECRET_KEY=your-alpaca-secret
 GOOGLE_CLIENT_ID=your-google-client-id
+
+# Optional
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 EMAIL_USER=service-account@example.com
 EMAIL_PASSWORD=super-secret-password
 FRONTEND_URL=http://localhost:5173
+
+# Lockdown mode (only approved users can access)
+LOCKDOWN=false
+
+# Trading safety (paper = sandbox, live = real money)
+ALPACA_ENV=paper
+```
+
+Create a `.env` file in `stockbuddy/`:
+```env
+VITE_API_BASE_URL=http://localhost:5001/api
+VITE_LOCKDOWN=false
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
 5. **Start the development servers**
@@ -145,6 +161,33 @@ npm run dev
 ```
 
 The application will be available at `http://localhost:5173`
+
+## 🔒 Lockdown Mode (Waitlist)
+
+The app supports a "lockdown" mode for controlled beta access:
+
+### How It Works
+1. Set `LOCKDOWN=true` (backend) and `VITE_LOCKDOWN=true` (frontend)
+2. Unauthenticated users can sign up but are redirected to `/waitlist`
+3. Only users with `approved=true` can access the full app
+4. Admins can create invite tokens that users redeem to gain access
+
+### Waitlist Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/waitlist` | Join waitlist (email, name) |
+| GET | `/api/waitlist/status?email=` | Check waitlist status |
+| POST | `/api/invites` | Create invite token (admin) |
+| POST | `/api/invites/redeem` | Redeem invite token |
+
+### Running in Lockdown
+```bash
+# Backend
+LOCKDOWN=true npm start
+
+# Frontend
+VITE_LOCKDOWN=true npm run dev
+```
 
 ## 🔧 Development
 

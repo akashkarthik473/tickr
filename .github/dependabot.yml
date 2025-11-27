@@ -1,0 +1,54 @@
+version: 2
+updates:
+  # Frontend dependencies
+  - package-ecosystem: "npm"
+    directory: "/stockbuddy"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      testing:
+        patterns:
+          - "vitest"
+          - "@testing-library/*"
+      dev-deps:
+        dependency-type: "development"
+
+  # Backend dependencies
+  - package-ecosystem: "npm"
+    directory: "/auth-backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "backend"
+    groups:
+      express:
+        patterns:
+          - "express*"
+      security:
+        patterns:
+          - "helmet"
+          - "cors"
+          - "jsonwebtoken"
+          - "bcrypt"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "ci"
+

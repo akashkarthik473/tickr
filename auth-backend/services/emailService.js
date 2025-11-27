@@ -196,7 +196,145 @@ const sendWelcomeEmail = async (userEmail, userName) => {
   }
 };
 
+/**
+ * Send waitlist confirmation email
+ */
+const sendWaitlistConfirmation = async (userEmail, userName) => {
+  try {
+    const transporter = await getTransporter();
+    if (!transporter) {
+      console.error('Failed to create email transporter');
+      return false;
+    }
+
+    const mailOptions = {
+      from: '"Tickr" <noreply@tickr.app>',
+      to: userEmail,
+      subject: "📋 You're on the Tickr waitlist!",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 30px; border-radius: 10px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">📋 You're on the List!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Tickr Early Access Waitlist</p>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-top: 20px;">
+            <h2 style="color: #333; margin-bottom: 20px;">Hey ${userName}! 👋</h2>
+            
+            <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+              Thanks for joining the Tickr waitlist! We're building something special for aspiring traders and investors, and you'll be among the first to experience it.
+            </p>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+              <h3 style="color: #333; margin-top: 0;">What happens next?</h3>
+              <ul style="color: #666; line-height: 1.8; margin: 0; padding-left: 20px;">
+                <li>We'll review your application</li>
+                <li>You'll receive an invite when it's your turn</li>
+                <li>Early users get special perks! 🎁</li>
+              </ul>
+            </div>
+            
+            <p style="color: #666; line-height: 1.6;">
+              In the meantime, follow us on social media to stay updated on our progress.
+            </p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
+            <p>© ${new Date().getFullYear()} Tickr. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    }
+    
+    console.log('Waitlist confirmation email sent to:', userEmail);
+    return true;
+  } catch (error) {
+    console.error('Error sending waitlist confirmation email:', error);
+    return false;
+  }
+};
+
+/**
+ * Send invite email with token
+ */
+const sendInviteEmail = async (userEmail, inviteToken) => {
+  try {
+    const transporter = await getTransporter();
+    if (!transporter) {
+      console.error('Failed to create email transporter');
+      return false;
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const redeemUrl = `${frontendUrl}/redeem?token=${inviteToken}`;
+
+    const mailOptions = {
+      from: '"Tickr" <noreply@tickr.app>',
+      to: userEmail,
+      subject: "🎉 Your Tickr invite is here!",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">🎉 You're In!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your Tickr Early Access Invite</p>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-top: 20px;">
+            <h2 style="color: #333; margin-bottom: 20px;">Welcome to Tickr! 🚀</h2>
+            
+            <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+              Great news! You've been selected for early access to Tickr. Click the button below to activate your account and start your trading journey.
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${redeemUrl}" 
+                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px;">
+                Activate My Account
+              </a>
+            </div>
+            
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="color: #666; margin: 0; font-size: 14px;">
+                <strong>Your invite code:</strong><br>
+                <code style="background: #eee; padding: 5px 10px; border-radius: 4px; font-family: monospace;">${inviteToken}</code>
+              </p>
+            </div>
+            
+            <p style="color: #999; font-size: 12px; line-height: 1.6;">
+              This invite is single-use and tied to this email address. If you didn't request this, please ignore this email.
+            </p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
+            <p>© ${new Date().getFullYear()} Tickr. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    }
+    
+    console.log('Invite email sent to:', userEmail);
+    return true;
+  } catch (error) {
+    console.error('Error sending invite email:', error);
+    return false;
+  }
+};
+
 module.exports = {
   sendGoalReminder,
   sendWelcomeEmail,
+  sendWaitlistConfirmation,
+  sendInviteEmail,
 };

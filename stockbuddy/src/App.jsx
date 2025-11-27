@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import PageTransition from "./components/PageTransition";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Home from "./pages/Home";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/Signup";
@@ -14,8 +15,14 @@ import AICoach from './pages/AICoach';
 import Shop from './pages/Shop';
 import Inventory from './pages/Inventory';
 import ArticleReader from './components/ArticleReader';
+import Waitlist from './pages/Waitlist';
+import NotFound from './pages/NotFound';
+import Protected from './routes/Protected';
 import { useNavbarBackground } from './hooks/useNavbarBackground';
 import { isAuthenticated } from './services/api';
+import { useUser } from './store/user';
+
+const LOCKDOWN = import.meta.env.VITE_LOCKDOWN === 'true';
 
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -24,25 +31,40 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setNavbarBackground } = useNavbarBackground();
+  const fetchUser = useUser((state) => state.fetchUser);
 
   // Check token validity on mount and when location changes
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const authenticated = isAuthenticated();
       setIsLoggedIn(authenticated);
       
-      // If user is on a protected route and not authenticated, redirect to sign in
-      const protectedRoutes = ['/dashboard', '/trade', '/learn', '/ai-coach', '/shop', '/settings'];
-      const isProtectedRoute = protectedRoutes.some(route => location.pathname.startsWith(route));
+      // Fetch user data if authenticated
+      if (authenticated) {
+        await fetchUser();
+      }
       
-      if (isProtectedRoute && !authenticated) {
-        console.log('User not authenticated, redirecting to sign in...');
-        navigate('/signin', { replace: true });
+      // In lockdown mode, only allow /waitlist - redirect everything else
+      if (LOCKDOWN && location.pathname !== '/waitlist') {
+        console.log('Lockdown mode: redirecting to waitlist');
+        navigate('/waitlist', { replace: true });
+        return;
+      }
+      
+      // If not in lockdown and user is on a protected route and not authenticated, redirect to sign in
+      if (!LOCKDOWN) {
+        const protectedRoutes = ['/dashboard', '/trade', '/learn', '/ai-coach', '/shop', '/settings', '/inventory'];
+        const isProtectedRoute = protectedRoutes.some(route => location.pathname.startsWith(route));
+        
+        if (isProtectedRoute && !authenticated) {
+          console.log('User not authenticated, redirecting to sign in...');
+          navigate('/signin', { replace: true });
+        }
       }
     };
     
     checkAuth();
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, fetchUser]);
 
   // Handle page background transitions and navbar coordination
   useEffect(() => {
@@ -108,23 +130,76 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <NavBar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
+      {!LOCKDOWN && <NavBar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />}
       <main className="main-content">
         <PageTransition isVisible={!isTransitioning}>
           <div className="page-content">
             <Routes location={currentLocation || location}>
-              <Route path="/" element={<Home isLoggedIn={isLoggedIn} />} />
-              <Route path="/signin" element={<SignIn setIsLoggedIn={setIsLoggedIn} />} />
-              <Route path="/signup" element={<SignUp setIsLoggedIn={setIsLoggedIn} />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/trade" element={<Trade />} />
-              <Route path="/learn" element={<Learn />} />
-              <Route path="/ai-coach" element={<AICoach />} />
-              <Route path="/shop" element={<Shop />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/learn/lesson/:lessonId" element={<LessonDetail />} />
-              <Route path="/article/:articleId" element={<ArticleReader />} />
-              <Route path="/settings" element={<Settings />} />
+              {/* In lockdown mode, only waitlist is accessible */}
+              {LOCKDOWN ? (
+                <>
+                  <Route path="/waitlist" element={<Waitlist />} />
+                  <Route path="*" element={<Navigate to="/waitlist" replace />} />
+                </>
+              ) : (
+                <>
+                  {/* Public routes */}
+                  <Route path="/" element={<Home isLoggedIn={isLoggedIn} />} />
+                  <Route path="/signin" element={<SignIn setIsLoggedIn={setIsLoggedIn} />} />
+                  <Route path="/signup" element={<SignUp setIsLoggedIn={setIsLoggedIn} />} />
+                  <Route path="/waitlist" element={<Waitlist />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/dashboard" element={
+                    <Protected>
+                      <Dashboard />
+                    </Protected>
+                  } />
+                  <Route path="/trade" element={
+                    <Protected>
+                      <Trade />
+                    </Protected>
+                  } />
+                  <Route path="/learn" element={
+                    <Protected>
+                      <Learn />
+                    </Protected>
+                  } />
+                  <Route path="/ai-coach" element={
+                    <Protected>
+                      <AICoach />
+                    </Protected>
+                  } />
+                  <Route path="/shop" element={
+                    <Protected>
+                      <Shop />
+                    </Protected>
+                  } />
+                  <Route path="/inventory" element={
+                    <Protected>
+                      <Inventory />
+                    </Protected>
+                  } />
+                  <Route path="/learn/lesson/:lessonId" element={
+                    <Protected>
+                      <LessonDetail />
+                    </Protected>
+                  } />
+                  <Route path="/article/:articleId" element={
+                    <Protected>
+                      <ArticleReader />
+                    </Protected>
+                  } />
+                  <Route path="/settings" element={
+                    <Protected>
+                      <Settings />
+                    </Protected>
+                  } />
+                  
+                  {/* 404 catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </>
+              )}
             </Routes>
           </div>
         </PageTransition>
@@ -135,10 +210,12 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AppContent />
+      </Router>
+    </ErrorBoundary>
   );
 }
 
-export default App; 
+export default App;

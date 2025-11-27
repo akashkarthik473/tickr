@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const fs = require('fs');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
@@ -9,7 +10,11 @@ const authRoutes = require('./routes/auth');
 const tradingRoutes = require('./routes/trading');
 const aiCoachRoutes = require('./routes/ai-coach');
 const shopRoutes = require('./routes/shop');
+const waitlistRoutes = require('./routes/waitlist');
+const inviteRoutes = require('./routes/invites');
 const FileStorage = require('./services/storageService');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { validateEnv } = require('./middleware/validateEnv');
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -22,32 +27,49 @@ const getTimestamp = () => {
   });
 };
 
-const validateEnvironment = () => {
-  const requiredVars = ['JWT_SECRET', 'GOOGLE_CLIENT_ID', 'ALPACA_API_KEY', 'ALPACA_SECRET_KEY'];
-  const optionalVars = ['EMAIL_USER', 'EMAIL_PASSWORD', 'GOOGLE_CLIENT_SECRET'];
+// Validate environment at boot
+const env = validateEnv();
+const LOCKDOWN = env.LOCKDOWN === 'true';
+const ALPACA_ENV = env.ALPACA_ENV || 'paper';
 
-  const missingRequired = requiredVars.filter((key) => !process.env[key]);
-  if (missingRequired.length > 0) {
-    console.error(`[${getTimestamp()}] ❌ Missing required environment variables: ${missingRequired.join(', ')}`);
-    console.error(`[${getTimestamp()}] Please create or update your .env file in auth-backend/ before starting the server.`);
-    process.exit(1);
-  }
-
-  const missingOptional = optionalVars.filter((key) => !process.env[key]);
-  if (missingOptional.length > 0) {
-    console.warn(`[${getTimestamp()}] ⚠️ Optional environment variables not set: ${missingOptional.join(', ')}`);
-    console.warn(`[${getTimestamp()}] Email functionality will fall back to Ethereal test accounts.`);
-  }
-};
-
-validateEnvironment();
+// Warn if not using paper trading
+if (ALPACA_ENV === 'live') {
+  console.warn(`[${getTimestamp()}] ⚠️  LIVE TRADING ENABLED - Real money at risk!`);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false // Disable CSP for API server
+}));
+
+// CORS configuration - restrict to frontend URL in production
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    // In development, allow any localhost origin
+    if (process.env.NODE_ENV !== 'production' && origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '1mb' }));
 
 // File-based storage setup
 const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -93,6 +115,8 @@ const authLogStream = rfs.createStream('auth.log', {
 // Make shared resources available to routes
 app.locals.fileStorage = fileStorage;
 app.locals.authLogger = authLogStream;
+app.locals.lockdown = LOCKDOWN;
+app.locals.alpacaEnv = ALPACA_ENV;
 
 // Global rate limiting (basic protection)
 const globalLimiter = rateLimit({
@@ -109,29 +133,43 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/trading', tradingRoutes);
-app.use('/api/ai-coach', aiCoachRoutes);
-app.use('/api/shop', shopRoutes);
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    port: PORT 
+    port: PORT,
+    lockdown: LOCKDOWN,
+    alpacaEnv: ALPACA_ENV
   });
 });
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/trading', tradingRoutes);
+app.use('/api/ai-coach', aiCoachRoutes);
+app.use('/api/shop', shopRoutes);
+app.use('/api/waitlist', waitlistRoutes);
+app.use('/api/invites', inviteRoutes);
+
+// 404 handler
+app.use(notFoundHandler);
+
+// Global error handler
+app.use(errorHandler);
 
 // Start server
 let serverInstance = null;
 if (require.main === module) {
   serverInstance = app.listen(PORT, () => {
-    console.log(`[${getTimestamp()}] 🚀 StockBuddy API running on port ${PORT}`);
+    console.log(`[${getTimestamp()}] 🚀 Tickr API running on port ${PORT}`);
     console.log(`[${getTimestamp()}] 📁 Using file-based storage in: ${dataDir}`);
     console.log(`[${getTimestamp()}] 📄 Auth logs: ${path.join(logsDir, 'auth.log')}`);
     console.log(`[${getTimestamp()}] 🔗 Health check: http://localhost:${PORT}/health`);
+    if (LOCKDOWN) {
+      console.log(`[${getTimestamp()}] 🔒 LOCKDOWN MODE: Only approved users can access the app`);
+    }
+    console.log(`[${getTimestamp()}] 📈 Alpaca environment: ${ALPACA_ENV}`);
   });
 }
 

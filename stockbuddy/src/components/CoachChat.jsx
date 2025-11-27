@@ -71,26 +71,35 @@ export function CoachChat({
   disabled = false,
   placeholder = null,
   onMessageSent = null,
-  onError = null
+  onError = null,
+  messages = null,
+  onSendMessage = null,
+  isLoading = false,
+  error = null
 }) {
-  const {
-    chatMessages,
-    userInput,
-    isLoading,
-    error,
-    chatEndRef,
-    sendMessage,
-    setUserInput
-  } = useCoachChat(scenario, enabled);
+  // If props are provided (controlled mode), use them. Otherwise use internal hook (uncontrolled mode).
+  const internalHook = useCoachChat(scenario, enabled);
+  
+  const isControlled = messages !== null;
+  
+  const displayMessages = isControlled ? messages : internalHook.chatMessages;
+  const sendMessage = isControlled ? onSendMessage : internalHook.sendMessage;
+  const loading = isControlled ? isLoading : internalHook.isLoading;
+  const displayError = isControlled ? error : internalHook.error;
+  
+  const [internalInput, setInternalInput] = React.useState('');
+  const userInput = isControlled ? internalInput : internalHook.userInput;
+  const setUserInput = isControlled ? setInternalInput : internalHook.setUserInput;
   
   const chatContainerRef = React.useRef(null);
+  const chatEndRef = React.useRef(null);
 
   // Notify parent of errors
   React.useEffect(() => {
-    if (error && onError) {
-      onError(error);
+    if (displayError && onError) {
+      onError(displayError);
     }
-  }, [error, onError]);
+  }, [displayError, onError]);
 
   // Auto-scroll when messages change or loading state changes
   React.useEffect(() => {
@@ -104,12 +113,16 @@ export function CoachChat({
         behavior: 'smooth'
       });
     }, 100);
-  }, [chatMessages, isLoading]);
+  }, [displayMessages, loading]);
 
   const handleSendMessage = async () => {
     if (!userInput.trim() || disabled || !enabled) return;
     
-    await sendMessage();
+    await sendMessage(userInput);
+    
+    if (isControlled) {
+      setUserInput('');
+    }
     
     if (onMessageSent) {
       onMessageSent(userInput);
@@ -157,7 +170,7 @@ export function CoachChat({
         backgroundColor: marbleWhite,
         borderRadius: '12px'
       }}>
-        {chatMessages.map((message, index) => (
+        {displayMessages.map((message, index) => (
           <div key={index} style={{
             marginBottom: '12px',
             textAlign: message.type === 'user' ? 'right' : 'left'
@@ -182,7 +195,7 @@ export function CoachChat({
             </div>
           </div>
         ))}
-        {isLoading && (
+        {loading && (
           <div style={{
             textAlign: 'left',
             marginBottom: '12px'
@@ -215,7 +228,7 @@ export function CoachChat({
             onChange={(e) => setUserInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={placeholder || defaultPlaceholder}
-            disabled={isLoading}
+            disabled={loading}
             style={{
               flex: 1,
               padding: '8px 12px',
@@ -223,13 +236,13 @@ export function CoachChat({
               border: '2px solid #e0e0e0',
               fontSize: '14px',
               fontFamily: fontBody,
-              opacity: isLoading ? 0.6 : 1,
-              cursor: isLoading ? 'not-allowed' : 'text'
+              opacity: loading ? 0.6 : 1,
+              cursor: loading ? 'not-allowed' : 'text'
             }}
           />
           <button
             onClick={handleSendMessage}
-            disabled={isLoading || !userInput.trim()}
+            disabled={loading || !userInput.trim()}
             style={{
               padding: '8px 16px',
               borderRadius: '8px',
@@ -237,10 +250,10 @@ export function CoachChat({
               backgroundColor: marbleGold,
               color: marbleDarkGray,
               fontWeight: 'bold',
-              cursor: isLoading || !userInput.trim() ? 'not-allowed' : 'pointer',
+              cursor: loading || !userInput.trim() ? 'not-allowed' : 'pointer',
               fontSize: '14px',
               fontFamily: fontBody,
-              opacity: isLoading || !userInput.trim() ? 0.6 : 1
+              opacity: loading || !userInput.trim() ? 0.6 : 1
             }}
           >
             Send
@@ -248,7 +261,7 @@ export function CoachChat({
         </div>
       )}
 
-      {error && (
+      {displayError && (
         <div style={{
           marginTop: '8px',
           padding: '8px',
@@ -258,7 +271,7 @@ export function CoachChat({
           fontSize: '12px',
           fontFamily: fontBody
         }}>
-          ⚠️ {error}
+          ⚠️ {displayError}
         </div>
       )}
     </div>

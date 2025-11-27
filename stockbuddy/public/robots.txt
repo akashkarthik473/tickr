@@ -1,0 +1,15 @@
+# Tickr - robots.txt
+# While in lockdown/beta, disallow all crawlers
+
+User-agent: *
+Disallow: /
+
+# When ready for production, replace with:
+# User-agent: *
+# Allow: /
+# Disallow: /api/
+# Disallow: /dashboard
+# Disallow: /settings
+# 
+# Sitemap: https://tickr.app/sitemap.xml
+

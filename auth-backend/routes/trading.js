@@ -1219,4 +1219,372 @@ function generateLiveCandleData(quote) {
   };
 }
 
+// Order validation schema
+const { z } = require('zod');
+
+const orderSchema = z.object({
+  symbol: z.string()
+    .min(1, 'Symbol is required')
+    .max(10, 'Symbol too long')
+    .regex(/^[A-Z]+$/, 'Symbol must be uppercase letters only'),
+  shares: z.number()
+    .positive('Shares must be positive')
+    .max(100000, 'Maximum 100,000 shares per order'),
+  type: z.enum(['market', 'limit']).optional().default('market'),
+  limitPrice: z.number().positive().optional()
+});
+
+/**
+ * Check if trading is allowed (paper mode only by default)
+ */
+const checkTradingAllowed = (req) => {
+  const alpacaEnv = req.app.locals.alpacaEnv || 'paper';
+  if (alpacaEnv === 'live') {
+    // Extra safety: require explicit confirmation for live trading
+    if (process.env.ALLOW_LIVE_TRADING !== 'true') {
+      throw new Error('Live trading is disabled. Set ALLOW_LIVE_TRADING=true to enable.');
+    }
+  }
+  return true;
+};
+
+// Buy stock
+router.post('/buy', authenticateToken, async (req, res) => {
+  try {
+    // Validate trading is allowed
+    checkTradingAllowed(req);
+    
+    // Validate order
+    const parsed = orderSchema.safeParse({
+      ...req.body,
+      symbol: req.body.symbol?.toUpperCase()
+    });
+    
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        message: parsed.error.issues[0]?.message || 'Invalid order'
+      });
+    }
+    
+    const { symbol, shares, type, limitPrice } = parsed.data;
+    const userId = req.user.userId;
+    
+    // Get current quote
+    const quote = await getStockQuote(symbol);
+    const price = type === 'limit' && limitPrice ? limitPrice : quote.price;
+    const totalCost = price * shares;
+    
+    // Get user portfolio
+    const portfolios = getPortfolios(req);
+    let portfolio = portfolios[userId];
+    
+    if (!portfolio) {
+      portfolio = initializePortfolio(req, userId);
+    }
+    
+    // Check if user has enough balance
+    if (portfolio.balance < totalCost) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient funds. Need $${totalCost.toFixed(2)}, have $${portfolio.balance.toFixed(2)}`
+      });
+    }
+    
+    // Execute buy
+    portfolio.balance -= totalCost;
+    
+    // Update or create position
+    const existingPosition = portfolio.positions.find(p => p.symbol === symbol);
+    if (existingPosition) {
+      // Average cost calculation
+      const totalShares = existingPosition.shares + shares;
+      const totalValue = (existingPosition.shares * existingPosition.avgCost) + totalCost;
+      existingPosition.avgCost = totalValue / totalShares;
+      existingPosition.shares = totalShares;
+      existingPosition.currentPrice = price;
+    } else {
+      portfolio.positions.push({
+        symbol,
+        shares,
+        avgCost: price,
+        currentPrice: price,
+        purchasedAt: new Date().toISOString()
+      });
+    }
+    
+    // Update total value
+    portfolio.totalValue = portfolio.balance + portfolio.positions.reduce((sum, p) => 
+      sum + (p.shares * p.currentPrice), 0);
+    portfolio.lastUpdated = new Date().toISOString();
+    
+    savePortfolios(req, portfolios);
+    
+    // Record transaction
+    const transactions = getTransactions(req);
+    if (!transactions[userId]) transactions[userId] = [];
+    transactions[userId].push({
+      id: `tx_${Date.now()}`,
+      type: 'buy',
+      symbol,
+      shares,
+      price,
+      total: totalCost,
+      timestamp: new Date().toISOString()
+    });
+    saveTransactions(req, transactions);
+    
+    console.log(`[${getTimestamp()}] 📈 BUY: ${userId} bought ${shares} ${symbol} @ $${price}`);
+    
+    res.json({
+      success: true,
+      message: `Bought ${shares} shares of ${symbol}`,
+      order: { symbol, shares, price, total: totalCost },
+      portfolio
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Buy error:`, error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to execute buy order'
+    });
+  }
+});
+
+// Sell stock
+router.post('/sell', authenticateToken, async (req, res) => {
+  try {
+    // Validate trading is allowed
+    checkTradingAllowed(req);
+    
+    // Validate order
+    const parsed = orderSchema.safeParse({
+      ...req.body,
+      symbol: req.body.symbol?.toUpperCase()
+    });
+    
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        message: parsed.error.issues[0]?.message || 'Invalid order'
+      });
+    }
+    
+    const { symbol, shares, type, limitPrice } = parsed.data;
+    const userId = req.user.userId;
+    
+    // Get user portfolio
+    const portfolios = getPortfolios(req);
+    const portfolio = portfolios[userId];
+    
+    if (!portfolio) {
+      return res.status(400).json({
+        success: false,
+        message: 'No portfolio found'
+      });
+    }
+    
+    // Check if user has the position
+    const position = portfolio.positions.find(p => p.symbol === symbol);
+    if (!position || position.shares < shares) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient shares. Have ${position?.shares || 0} ${symbol}, trying to sell ${shares}`
+      });
+    }
+    
+    // Get current quote
+    const quote = await getStockQuote(symbol);
+    const price = type === 'limit' && limitPrice ? limitPrice : quote.price;
+    const totalProceeds = price * shares;
+    
+    // Execute sell
+    portfolio.balance += totalProceeds;
+    position.shares -= shares;
+    position.currentPrice = price;
+    
+    // Remove position if fully sold
+    if (position.shares === 0) {
+      portfolio.positions = portfolio.positions.filter(p => p.symbol !== symbol);
+    }
+    
+    // Update total value
+    portfolio.totalValue = portfolio.balance + portfolio.positions.reduce((sum, p) => 
+      sum + (p.shares * p.currentPrice), 0);
+    portfolio.lastUpdated = new Date().toISOString();
+    
+    savePortfolios(req, portfolios);
+    
+    // Record transaction
+    const transactions = getTransactions(req);
+    if (!transactions[userId]) transactions[userId] = [];
+    transactions[userId].push({
+      id: `tx_${Date.now()}`,
+      type: 'sell',
+      symbol,
+      shares,
+      price,
+      total: totalProceeds,
+      profit: (price - position.avgCost) * shares,
+      timestamp: new Date().toISOString()
+    });
+    saveTransactions(req, transactions);
+    
+    console.log(`[${getTimestamp()}] 📉 SELL: ${userId} sold ${shares} ${symbol} @ $${price}`);
+    
+    res.json({
+      success: true,
+      message: `Sold ${shares} shares of ${symbol}`,
+      order: { symbol, shares, price, total: totalProceeds },
+      portfolio
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Sell error:`, error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to execute sell order'
+    });
+  }
+});
+
+// Get user portfolio
+router.get('/portfolio', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const portfolios = getPortfolios(req);
+    let portfolio = portfolios[userId];
+    
+    if (!portfolio) {
+      portfolio = initializePortfolio(req, userId);
+    }
+    
+    // Update current prices
+    for (const position of portfolio.positions) {
+      try {
+        const quote = await getStockQuote(position.symbol);
+        position.currentPrice = quote.price;
+      } catch (error) {
+        console.warn(`[${getTimestamp()}] Failed to update price for ${position.symbol}`);
+      }
+    }
+    
+    // Recalculate total value
+    portfolio.totalValue = portfolio.balance + portfolio.positions.reduce((sum, p) => 
+      sum + (p.shares * p.currentPrice), 0);
+    
+    savePortfolios(req, portfolios);
+    
+    res.json({
+      success: true,
+      portfolio
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Portfolio error:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get portfolio'
+    });
+  }
+});
+
+// Get transactions
+router.get('/transactions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const transactions = getTransactions(req);
+    const userTransactions = transactions[userId] || [];
+    
+    res.json({
+      success: true,
+      transactions: userTransactions.sort((a, b) => 
+        new Date(b.timestamp) - new Date(a.timestamp)
+      )
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Transactions error:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get transactions'
+    });
+  }
+});
+
+// Get stock quote
+router.get('/quote/:symbol', async (req, res) => {
+  try {
+    const symbol = req.params.symbol.toUpperCase();
+    const quote = await getStockQuote(symbol);
+    
+    res.json({
+      success: true,
+      quote
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Quote error for ${req.params.symbol}:`, error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get quote'
+    });
+  }
+});
+
+// Search stocks
+router.get('/search', async (req, res) => {
+  try {
+    const query = req.query.query || req.query.q;
+    if (!query || query.length < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query required'
+      });
+    }
+    
+    const results = await searchStocks(query);
+    
+    res.json({
+      success: true,
+      results
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Search error:`, error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to search stocks'
+    });
+  }
+});
+
+// Autocomplete search
+router.get('/autocomplete', async (req, res) => {
+  try {
+    const query = req.query.query || req.query.q;
+    if (!query || query.length < 1) {
+      return res.json({ success: true, results: [] });
+    }
+    
+    // Quick cached lookup for autocomplete
+    const cacheKey = `autocomplete_${query.toLowerCase()}`;
+    const now = Date.now();
+    if (searchCache[cacheKey] && (now - searchCache[cacheKey].timestamp) < SEARCH_CACHE_DURATION) {
+      return res.json({
+        success: true,
+        results: searchCache[cacheKey].data
+      });
+    }
+    
+    const results = await searchStocks(query);
+    const limitedResults = results.slice(0, 5); // Limit for autocomplete
+    
+    searchCache[cacheKey] = { data: limitedResults, timestamp: now };
+    
+    res.json({
+      success: true,
+      results: limitedResults
+    });
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Autocomplete error:`, error);
+    res.json({ success: true, results: [] }); // Return empty on error for autocomplete
+  }
+});
+
 module.exports = router;
