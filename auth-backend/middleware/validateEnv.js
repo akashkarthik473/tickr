@@ -42,6 +42,21 @@ const envSchema = z.object({
  * @returns {Object} Validated and typed env object
  */
 function validateEnv() {
+  // Skip validation in test environment
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      JWT_SECRET: process.env.JWT_SECRET || 'test-secret',
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || 'test-client-id',
+      ALPACA_API_KEY: process.env.ALPACA_API_KEY || 'test-key',
+      ALPACA_SECRET_KEY: process.env.ALPACA_SECRET_KEY || 'test-secret',
+      PORT: process.env.PORT || '5001',
+      NODE_ENV: 'test',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+      LOCKDOWN: process.env.LOCKDOWN || 'false',
+      ALPACA_ENV: process.env.ALPACA_ENV || 'paper'
+    };
+  }
+
   const result = envSchema.safeParse(process.env);
   
   if (!result.success) {

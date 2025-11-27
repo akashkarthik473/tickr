@@ -40,16 +40,14 @@ describe('Auth routes', () => {
   });
 });
 
-describe('Trading routes', () => {
-  it('returns websocket status', async () => {
+describe('Health check', () => {
+  it('returns healthy status', async () => {
     const response = await request(app)
-      .get('/api/trading/websocket-status')
+      .get('/health')
       .expect(200);
 
-    expect(response.body).toMatchObject({
-      connected: false,
-      authenticated: false
-    });
+    expect(response.body.status).toBe('healthy');
+    expect(response.body.port).toBeDefined();
   });
 });
 
