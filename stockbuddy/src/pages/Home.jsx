@@ -486,6 +486,35 @@ function Home({ isLoggedIn }) {
   // Testimonials section fade-in - triggers at 78% scroll (when testimonials are in view)
   const testimonialProgress = Math.max(0, Math.min((totalScrollProgress - 0.68) * 8, 1));
 
+  const smoothStep = (t) => {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    return t * t * (3 - 2 * t);
+  };
+
+  const testimonialCardBaseStyle = {
+    background: marbleWhite,
+    padding: '32px',
+    borderRadius: '20px',
+    border: `1px solid ${marbleGray}`,
+    transition: 'box-shadow 0.4s ease, transform 0.9s cubic-bezier(0.23, 1, 0.32, 1)',
+  };
+
+  const getTestimonialCardStyle = (offset = 0, spread = 0.18) => {
+    const raw = (testimonialProgress - offset) / spread;
+    const easedProgress = smoothStep(Math.max(0, Math.min(raw, 1)));
+    const translateX = (1 - easedProgress) * -110;
+    const translateY = (1 - easedProgress) * 35;
+    const scale = 0.92 + easedProgress * 0.08;
+
+    return {
+      ...testimonialCardBaseStyle,
+      opacity: easedProgress,
+      transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`,
+      boxShadow: easedProgress > 0.85 ? '0 15px 45px rgba(0,0,0,0.08)' : 'none',
+    };
+  };
+
   // Cascading elements data - different sizes, positions, and speeds
   const cascadeElements = [
     { x: 5, size: 8, speed: 0.8, delay: 0 },
@@ -552,7 +581,7 @@ function Home({ isLoggedIn }) {
         <FloatingElements>
           <FloatingImage 
             src="/marbleWhitelogo.png" 
-            alt="Tickr"
+            alt="tickr"
             $size="large"
             style={{ 
               top: '15%', 
@@ -571,7 +600,7 @@ function Home({ isLoggedIn }) {
           />
           <FloatingImage 
             src="/marbleDarkGray.png" 
-            alt="Tickr"
+            alt="tickr"
             $size="medium"
             style={{ 
               top: '20%', 
@@ -590,7 +619,7 @@ function Home({ isLoggedIn }) {
           />
           <FloatingImage 
             src="/marbleGraylogo.png" 
-            alt="Tickr"
+            alt="tickr"
             $size="small"
             style={{ 
               bottom: '25%', 
@@ -609,7 +638,7 @@ function Home({ isLoggedIn }) {
           />
           <FloatingImage 
             src="/marbleLightGraylogo.png" 
-            alt="Tickr"
+            alt="tickr"
             $size="medium"
             style={{ 
               bottom: '15%', 
@@ -742,8 +771,8 @@ function Home({ isLoggedIn }) {
           >
             <PhoneScreen>
               <PhoneContent>
-                <img src="/logo.png" alt="Tickr" />
-                <h4>Tickr</h4>
+                <img src="/logo.png" alt="tickr" />
+                <h4>tickr</h4>
                 <p>Your pocket trading mentor</p>
                 <div style={{ 
                   marginTop: '20px',
@@ -1017,7 +1046,7 @@ function Home({ isLoggedIn }) {
         <SectionInner>
           <SectionTitle>What Our Users Say</SectionTitle>
           <SectionSubtitle>
-            Join thousands who've started their trading journey with Tickr.
+            Join thousands who've started their trading journey with tickr.
           </SectionSubtitle>
           
           <div style={{ 
@@ -1027,16 +1056,7 @@ function Home({ isLoggedIn }) {
             marginTop: '60px' 
           }}>
             {/* Testimonial 1 - First to fade in */}
-            <div style={{ 
-              background: marbleWhite, 
-              padding: '32px', 
-              borderRadius: '20px',
-              border: `1px solid ${marbleGray}`,
-              opacity: Math.min(testimonialProgress * 1.5, 1),
-              transform: `translateY(${(1 - Math.min(testimonialProgress * 1.5, 1)) * 80}px) scale(${0.9 + Math.min(testimonialProgress * 1.5, 1) * 0.1})`,
-              transition: 'box-shadow 0.3s ease',
-              boxShadow: testimonialProgress > 0.3 ? '0 10px 40px rgba(0,0,0,0.08)' : 'none'
-            }}>
+            <div style={getTestimonialCardStyle(0.25, 0.35)}>
               <p style={{ color: marbleDarkGray, fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '20px' }}>
                 "Finally, a platform that doesn't throw you into the deep end. The paper trading feature let me make mistakes without losing real money."
               </p>
@@ -1050,16 +1070,7 @@ function Home({ isLoggedIn }) {
             </div>
             
             {/* Testimonial 2 - Slight delay */}
-            <div style={{ 
-              background: marbleWhite, 
-              padding: '32px', 
-              borderRadius: '20px',
-              border: `1px solid ${marbleGray}`,
-              opacity: Math.min(Math.max((testimonialProgress - 0.2) * 1.5, 0), 1),
-              transform: `translateY(${(1 - Math.min(Math.max((testimonialProgress - 0.2) * 1.5, 0), 1)) * 80}px) scale(${0.9 + Math.min(Math.max((testimonialProgress - 0.2) * 1.5, 0), 1) * 0.1})`,
-              transition: 'box-shadow 0.3s ease',
-              boxShadow: testimonialProgress > 0.5 ? '0 10px 40px rgba(0,0,0,0.08)' : 'none'
-            }}>
+            <div style={getTestimonialCardStyle(0.4, 0.35)}>
               <p style={{ color: marbleDarkGray, fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '20px' }}>
                 "The AI coach is like having a mentor available 24/7. It explained concepts I'd struggled with for months in just minutes."
               </p>
@@ -1073,16 +1084,7 @@ function Home({ isLoggedIn }) {
             </div>
             
             {/* Testimonial 3 - Last to fade in */}
-            <div style={{ 
-              background: marbleWhite, 
-              padding: '32px', 
-              borderRadius: '20px',
-              border: `1px solid ${marbleGray}`,
-              opacity: Math.min(Math.max((testimonialProgress - 0.4) * 1.5, 0), 1),
-              transform: `translateY(${(1 - Math.min(Math.max((testimonialProgress - 0.4) * 1.5, 0), 1)) * 80}px) scale(${0.9 + Math.min(Math.max((testimonialProgress - 0.4) * 1.5, 0), 1) * 0.1})`,
-              transition: 'box-shadow 0.3s ease',
-              boxShadow: testimonialProgress > 0.7 ? '0 10px 40px rgba(0,0,0,0.08)' : 'none'
-            }}>
+            <div style={getTestimonialCardStyle(0.65, 0.35)}>
               <p style={{ color: marbleDarkGray, fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '20px' }}>
                 "The gamification keeps me coming back. I've learned more about investing in 2 weeks than I did in 2 years of reading."
               </p>
@@ -1143,7 +1145,7 @@ function Home({ isLoggedIn }) {
         background: marbleWhite
       }}>
         <p style={{ color: marbleGray, fontSize: '0.9rem' }}>
-          © {new Date().getFullYear()} Tickr. Learn responsibly. Paper trading only.
+          © {new Date().getFullYear()} tickr. Learn responsibly. Paper trading only.
         </p>
       </footer>
 

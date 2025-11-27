@@ -254,7 +254,7 @@
     "password": "$2b$10$V5vsr28i7YNT8DyzS79qbuEdR4EyPRe83HmwklhZl8xAwqxK.2S4W",
     "name": "ritvik v",
     "createdAt": "2025-10-22T05:23:11.394Z",
-    "lastLogin": "2025-11-11T00:38:58.197Z",
+    "lastLogin": "2025-11-27T10:45:25.634Z",
     "portfolio": {
       "balance": 10000,
       "positions": [],
@@ -313,26 +313,8 @@
       "notifications": true,
       "difficulty": "auto"
     },
-    "activeEffects": {
-      "coin_multiplier_1762821560863": {
-        "type": "coin_multiplier",
-        "multiplier": 2,
-        "lessonsRemaining": 5,
-        "duration": 172800000,
-        "expiresAt": "2025-11-13T00:39:20.863Z",
-        "purchasedAt": "2025-11-11T00:39:16.704Z",
-        "activatedAt": "2025-11-11T00:39:20.863Z"
-      },
-      "xp_multiplier_1762821595613": {
-        "type": "xp_multiplier",
-        "multiplier": 1.5,
-        "lessonsRemaining": 3,
-        "duration": 86400000,
-        "expiresAt": "2025-11-12T00:39:55.613Z",
-        "purchasedAt": "2025-11-11T00:39:13.099Z",
-        "activatedAt": "2025-11-11T00:39:55.613Z"
-      }
-    }
+    "activeEffects": {},
+    "picture": "https://lh3.googleusercontent.com/a/ACg8ocKfoEZYj5WmASEKhItze-6R2kdAeexeZAb4MXNWGxOVox_YJGq9=s96-c"
   },
   "user_1761110972112_y5uk2dzyh": {
     "id": "user_1761110972112_y5uk2dzyh",

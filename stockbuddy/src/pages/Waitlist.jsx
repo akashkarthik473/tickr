@@ -242,7 +242,7 @@ export default function Waitlist() {
   return (
     <Container>
       <Card>
-        <Logo>Tickr</Logo>
+        <Logo>tickr</Logo>
         <Subtitle>Join the waitlist for early access</Subtitle>
         
         {message && (

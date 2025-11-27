@@ -108,7 +108,7 @@ function Profile() {
           navigate('/settings');
         }}>Edit profile</a>
         <div className="profile-total-value">{formatCurrency(totalValue)}</div>
-        <div className="profile-total-label">Total in Tickr</div>
+        <div className="profile-total-label">Total in tickr</div>
         <div className="profile-investing-section">
           <div className="profile-investing-title">Individual investing</div>
           <div className="profile-divider"></div>
