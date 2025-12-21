@@ -72,5 +72,42 @@
       "timestamp": "2025-08-08T19:37:54.076Z"
     }
   ],
-  "user_1761110591394_y1xgsgt0u": []
+  "user_1761110591394_y1xgsgt0u": [
+    {
+      "id": "tx_1766287176360",
+      "type": "buy",
+      "symbol": "META",
+      "shares": 1,
+      "price": 658.72,
+      "total": 658.72,
+      "timestamp": "2025-12-21T03:19:36.360Z"
+    },
+    {
+      "id": "tx_1766287239019",
+      "type": "buy",
+      "symbol": "META",
+      "shares": 1,
+      "price": 658.72,
+      "total": 658.72,
+      "timestamp": "2025-12-21T03:20:39.019Z"
+    },
+    {
+      "id": "tx_1766287415136",
+      "type": "buy",
+      "symbol": "META",
+      "shares": 1,
+      "price": 658.72,
+      "total": 658.72,
+      "timestamp": "2025-12-21T03:23:35.136Z"
+    },
+    {
+      "id": "tx_1766287610170",
+      "type": "buy",
+      "symbol": "META",
+      "shares": 1,
+      "price": 658.72,
+      "total": 658.72,
+      "timestamp": "2025-12-21T03:26:50.170Z"
+    }
+  ]
 }
