@@ -17,6 +17,8 @@ const Container = styled.div`
   justify-content: center;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   padding: 20px;
+  margin-top: -60px;
+  padding-top: 80px;
 `;
 
 const Card = styled.div`

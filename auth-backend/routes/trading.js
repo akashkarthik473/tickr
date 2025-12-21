@@ -1297,19 +1297,30 @@ router.post('/buy', authenticateToken, async (req, res) => {
     // Update or create position
     const existingPosition = portfolio.positions.find(p => p.symbol === symbol);
     if (existingPosition) {
-      // Average cost calculation
+      // Backwards compatibility: migrate avgCost to avgPrice if needed
+      const currentAvgPrice = existingPosition.avgPrice ?? existingPosition.avgCost ?? price;
+      
+      // Average price calculation
       const totalShares = existingPosition.shares + shares;
-      const totalValue = (existingPosition.shares * existingPosition.avgCost) + totalCost;
-      existingPosition.avgCost = totalValue / totalShares;
+      const totalValue = (existingPosition.shares * currentAvgPrice) + totalCost;
+      existingPosition.avgPrice = totalValue / totalShares;
       existingPosition.shares = totalShares;
       existingPosition.currentPrice = price;
+      existingPosition.change = quote.change || 0;
+      existingPosition.changePercent = quote.changePercent || "0.00";
+      
+      // Clean up legacy field if it exists
+      if (existingPosition.avgCost !== undefined) {
+        delete existingPosition.avgCost;
+      }
     } else {
       portfolio.positions.push({
         symbol,
         shares,
-        avgCost: price,
+        avgPrice: price,
         currentPrice: price,
-        purchasedAt: new Date().toISOString()
+        change: quote.change || 0,
+        changePercent: quote.changePercent || "0.00"
       });
     }
     
@@ -1402,6 +1413,9 @@ router.post('/sell', authenticateToken, async (req, res) => {
     portfolio.balance += totalProceeds;
     position.shares -= shares;
     position.currentPrice = price;
+    // Update change data from current quote to prevent stale values
+    position.change = quote.change || 0;
+    position.changePercent = quote.changePercent || "0.00";
     
     // Remove position if fully sold
     if (position.shares === 0) {
@@ -1418,6 +1432,8 @@ router.post('/sell', authenticateToken, async (req, res) => {
     // Record transaction
     const transactions = getTransactions(req);
     if (!transactions[userId]) transactions[userId] = [];
+    // Backwards compatibility: use avgPrice or legacy avgCost
+    const positionAvgPrice = position.avgPrice ?? position.avgCost ?? price;
     transactions[userId].push({
       id: `tx_${Date.now()}`,
       type: 'sell',
@@ -1425,7 +1441,7 @@ router.post('/sell', authenticateToken, async (req, res) => {
       shares,
       price,
       total: totalProceeds,
-      profit: (price - position.avgCost) * shares,
+      profit: (price - positionAvgPrice) * shares,
       timestamp: new Date().toISOString()
     });
     saveTransactions(req, transactions);
@@ -1458,11 +1474,19 @@ router.get('/portfolio', authenticateToken, async (req, res) => {
       portfolio = initializePortfolio(req, userId);
     }
     
-    // Update current prices
+    // Update current prices and change data
     for (const position of portfolio.positions) {
       try {
         const quote = await getStockQuote(position.symbol);
         position.currentPrice = quote.price;
+        position.change = quote.change || 0;
+        position.changePercent = quote.changePercent || "0.00";
+        
+        // Migrate legacy avgCost to avgPrice if needed
+        if (position.avgCost !== undefined && position.avgPrice === undefined) {
+          position.avgPrice = position.avgCost;
+          delete position.avgCost;
+        }
       } catch (error) {
         console.warn(`[${getTimestamp()}] Failed to update price for ${position.symbol}`);
       }

@@ -713,14 +713,14 @@ function Trade() {
                         fontSize: '14px',
                         color: marbleGray
                       }}>
-                        Avg: ${position.averagePrice?.toFixed(2)}
+                        Avg: ${(position.avgPrice ?? position.avgCost)?.toFixed(2) || '0.00'}
                       </div>
                       <div style={{
                         fontSize: '16px',
                         fontWeight: 'bold',
                         color: marbleDarkGray
                       }}>
-                        ${getPositionValue(position).toFixed(2)}
+                        ${getPositionValue(position).currentValue?.toFixed(2) || '0.00'}
                       </div>
                     </div>
                   </div>

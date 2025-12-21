@@ -31,10 +31,13 @@ export const getMarketStatusText = (marketStatus) => {
 
 // Portfolio utilities
 export const getPositionValue = (position) => {
-  const currentValue = position.shares * position.currentPrice;
-  const costBasis = position.shares * position.avgPrice;
+  // Backwards compatibility: support both avgPrice and legacy avgCost
+  const avgPrice = position.avgPrice ?? position.avgCost ?? 0;
+  const currentPrice = position.currentPrice ?? avgPrice;
+  const currentValue = position.shares * currentPrice;
+  const costBasis = position.shares * avgPrice;
   const pnl = currentValue - costBasis;
-  const pnlPercent = (pnl / costBasis) * 100;
+  const pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
   return { currentValue, pnl, pnlPercent };
 };
 
