@@ -258,10 +258,11 @@ const FloatingElements = styled.div`
 
 const FloatingImage = styled.img`
   position: absolute;
-  border-radius: 20px;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  border-radius: 0;
+  box-shadow: none;
   transition: transform 0.15s ease-out;
   will-change: transform;
+  clip-path: inset(0 0 20% 0); /* crops 12% from bottom to hide shadow */
   
   ${props => props.$size === 'large' && `
     width: 280px;
@@ -649,7 +650,7 @@ function Home({ isLoggedIn }) {
         {/* Floating 3D Images - Transforms based on scroll */}
         <FloatingElements>
           <FloatingImage 
-            src="/marbleWhitelogo.png" 
+            src="/money-icon.png" 
             alt="tickr"
             $size="large"
             style={{ 
@@ -668,7 +669,7 @@ function Home({ isLoggedIn }) {
             }}
           />
           <FloatingImage 
-            src="/marbleDarkGray.png" 
+            src="/candlestick-icon.png" 
             alt="tickr"
             $size="medium"
             style={{ 
@@ -687,7 +688,7 @@ function Home({ isLoggedIn }) {
             }}
           />
           <FloatingImage 
-            src="/marbleGraylogo.png" 
+            src="/brain-icon.png" 
             alt="tickr"
             $size="small"
             style={{ 
@@ -706,7 +707,7 @@ function Home({ isLoggedIn }) {
             }}
           />
           <FloatingImage 
-            src="/marbleLightGraylogo.png" 
+            src="/wallet-icon.png" 
             alt="tickr"
             $size="medium"
             style={{ 
@@ -886,7 +887,7 @@ function Home({ isLoggedIn }) {
               `
             }}
           >
-            <h5>50+</h5>
+            <h5>20+</h5>
             <span>Lessons</span>
           </FloatingStats>
         </div>

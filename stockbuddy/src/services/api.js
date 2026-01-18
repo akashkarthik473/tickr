@@ -103,20 +103,16 @@ export const api = {
   // Chart data endpoint
   getChartData: (symbol, interval, limit = 500, startDate, endDate) => {
     const params = new URLSearchParams({
-      timeframe: interval, // Backend expects 'timeframe', not 'interval'
+      timeframe: interval,
       limit: limit.toString()
     });
     
-    if (startDate) params.append('start', startDate); // Backend expects 'start', not 'startDate'
-    if (endDate) params.append('end', endDate); // Backend expects 'end', not 'endDate'
+    if (startDate) params.append('start', startDate);
+    if (endDate) params.append('end', endDate);
     
     const url = `${API_BASE_URL}/trading/chart/${symbol}?${params}`;
-    console.log('getChartData: Calling URL:', url);
-    console.log('getChartData: Params:', { symbol, interval, limit, startDate, endDate });
-    console.log('getChartData: Final params string:', params.toString());
     
     // Chart data doesn't require authentication
-    // Backend route is /chart/:symbol, so symbol goes in the URL path
     return fetch(url, {
       headers: { 'Content-Type': 'application/json' }
     }).then(handleResponse);
@@ -241,9 +237,6 @@ export const api = {
 
   // AI Coach endpoints
   sendCoachMessage: (data) => {
-    console.log('[api.sendCoachMessage] Sending request to:', `${API_BASE_URL}/ai-coach/chat`);
-    console.log('[api.sendCoachMessage] Data:', data);
-    try {
       // AI coach routes don't require auth, so we'll make it optional
       const headers = {
         'Content-Type': 'application/json'
@@ -257,18 +250,7 @@ export const api = {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(data)
-      }).then(async (response) => {
-        console.log('[api.sendCoachMessage] Response status:', response.status);
-        console.log('[api.sendCoachMessage] Response ok:', response.ok);
-        return handleResponse(response);
-      }).catch(error => {
-        console.error('[api.sendCoachMessage] Fetch error:', error);
-        throw error;
-      });
-    } catch (error) {
-      console.error('[api.sendCoachMessage] Error:', error);
-      throw error;
-    }
+    }).then(handleResponse);
   },
 
   analyzeDecision: (data) => fetch(`${API_BASE_URL}/ai-coach/analyze`, {

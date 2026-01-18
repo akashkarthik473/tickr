@@ -61,15 +61,10 @@ export function useCoachChat(scenario, enabled = true) {
     setError(null);
 
     try {
-      console.log('[useCoachChat] Sending message:', messageToSend);
-      console.log('[useCoachChat] Scenario object:', scenario);
-      
-      // Backend formatChatUserContent expects: scenario.title, scenario.context, scenario.keyEvents
-      // The scenario object structure is: { title, scenario: { context, keyEvents, ... } }
-      // We need to send a merged object with title and the nested scenario properties
+      // Backend expects: scenario.title, scenario.context, scenario.keyEvents
+      // Merge top-level title with nested scenario properties
       let scenarioData;
       if (scenario?.scenario) {
-        // Merge top-level title with nested scenario properties
         scenarioData = {
           title: scenario.title,
           ...scenario.scenario
@@ -84,8 +79,6 @@ export function useCoachChat(scenario, enabled = true) {
         chatHistory: chatMessages
       });
 
-      console.log('[useCoachChat] Response received:', response);
-
       if (response && response.success) {
         const aiMessage = {
           type: 'ai',
@@ -94,7 +87,6 @@ export function useCoachChat(scenario, enabled = true) {
         };
         setChatMessages(prev => [...prev, aiMessage]);
       } else {
-        console.warn('[useCoachChat] Response not successful:', response);
         // More helpful fallback response based on error type
         let fallbackContent = "I'm here to help you learn about trading! Ask me about market psychology, technical analysis, risk management, or any trading concepts you'd like to understand better.";
         
@@ -117,12 +109,7 @@ export function useCoachChat(scenario, enabled = true) {
         setError(response?.error || response?.message || 'Failed to get response');
       }
     } catch (err) {
-      console.error('[useCoachChat] Error caught:', err);
-      console.error('[useCoachChat] Error details:', {
-        message: err.message,
-        stack: err.stack,
-        response: err.response
-      });
+      console.error('Chat error:', err.message);
       
       // More helpful error message based on error type
       let errorContent = "I apologize, but I'm having trouble connecting right now. ";
@@ -146,7 +133,6 @@ export function useCoachChat(scenario, enabled = true) {
       setError(err.message || 'Failed to send message');
     } finally {
       setIsLoading(false);
-      console.log('[useCoachChat] Loading state set to false');
     }
   };
 

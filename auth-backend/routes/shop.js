@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
+const authRoutes = require('./auth');
+
+// Reuse shared middleware from auth routes
+const authenticateToken = authRoutes.authenticateToken;
 
 // Helper function to get formatted timestamp
 const getTimestamp = () => {
@@ -11,29 +14,6 @@ const getTimestamp = () => {
     second: '2-digit',
     fractionalSecondDigits: 3
   });
-};
-
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'No token provided'
-    });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid token'
-    });
-  }
 };
 
 // File-based user management

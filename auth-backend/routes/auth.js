@@ -302,16 +302,9 @@ router.post('/login', authLimiter, async (req, res) => {
 // Google OAuth login
 router.post('/google', authLimiter, async (req, res) => {
   try {
-    console.log('🔍 Google OAuth request received');
-    console.log('🔍 Environment variables:', {
-      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? 'SET' : 'NOT SET',
-      JWT_SECRET: JWT_SECRET ? 'SET' : 'NOT SET'
-    });
-    
     const { token } = req.body;
     
     if (!token) {
-      console.error('❌ No token provided in request body');
       logAuthAttempt(req, {
         action: 'google-auth',
         success: false,
@@ -324,34 +317,25 @@ router.post('/google', authLimiter, async (req, res) => {
       });
     }
 
-    console.log('🔍 Token received, length:', token.length);
-    console.log('🔍 Token preview:', token.substring(0, 50) + '...');
-
     // Verify Google token
-    console.log('🔍 Verifying Google token...');
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID
     });
 
-    console.log('✅ Google token verified successfully');
     const payload = ticket.getPayload();
     const { email, name, picture } = payload;
-    
-    console.log('🔍 Google user info:', { email, name, picture: picture ? 'SET' : 'NOT SET' });
 
     const users = getUsers(req);
     
     // Check if user exists
     let user = Object.values(users).find(u => u.email === email);
     const isNewUser = !user;
-    console.log('🔍 User lookup result:', user ? 'EXISTING USER' : 'NEW USER');
     
     if (!user) {
       // Create new user with generated username
       const userId = generateUserId();
       const username = `user_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-      console.log('🔍 Creating new user with ID:', userId, 'Username:', username);
       
       user = {
         id: userId,
@@ -390,7 +374,6 @@ router.post('/google', authLimiter, async (req, res) => {
       });
     } else {
       // Update existing user
-      console.log('🔍 Updating existing user:', user.id);
       user.lastLogin = new Date().toISOString();
       user.picture = picture;
       users[user.id] = user;
@@ -403,20 +386,14 @@ router.post('/google', authLimiter, async (req, res) => {
       });
     }
 
-    console.log('🔍 Saving user data...');
     saveUsers(req, users);
-    console.log('✅ User data saved successfully');
 
     // Generate JWT token
-    console.log('🔍 Generating JWT token...');
     const jwtToken = jwt.sign(
       { userId: user.id, email: user.email, username: user.username },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-    console.log('✅ JWT token generated successfully');
-
-    console.log('✅ Google OAuth login completed successfully');
     
     // Send welcome email for new users (don't wait for it to complete)
     if (isNewUser) {
@@ -438,8 +415,7 @@ router.post('/google', authLimiter, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Google login error:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('Google login error:', error.message);
     logAuthAttempt(req, {
       action: 'google-auth',
       success: false,
