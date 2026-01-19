@@ -195,6 +195,9 @@ const renderMarkdown = (raw = '') => {
     .replace(/<p>/g, '<p style="margin:0;">');
 };
 
+// Scenario emoji icons for nav
+const SCENARIO_ICONS = ['🚗', '🎮', '🍎', '₿'];
+
 function AICoach() {
   const [currentScenario, setCurrentScenario] = useState(0);
   const [scenarioCompleted, setScenarioCompleted] = useState(false);
@@ -207,7 +210,7 @@ function AICoach() {
   const [chartData, setChartData] = useState(null);
   const [chartScenarioIndex, setChartScenarioIndex] = useState(null);
   const [asOfDate, setAsOfDate] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [showPLCalculation, setShowPLCalculation] = useState(false);
   const [showSharesCalculation, setShowSharesCalculation] = useState(false);
   const didBounceScenarioRef = useRef(false);
@@ -215,6 +218,7 @@ function AICoach() {
   const bounceAltIndexRef = useRef(1);
   const defaultScenarioIndexRef = useRef(0);
   const [bouncePhase, setBouncePhase] = useState('idle'); // idle | toAlt | back | done
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'decide'
 
   const scenario = HISTORICAL_SCENARIOS[currentScenario];
 

@@ -309,201 +309,328 @@ export default function Learn() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Roadmap Content */}
       <div style={{
-        maxWidth: "1200px",
+        maxWidth: "480px",
         margin: "0 auto",
-        padding: "48px 24px"
+        padding: "48px 24px",
+        position: "relative"
       }}>
-        {/* Units Grid */}
-        <div style={{
-          display: "grid",
-          gap: "24px",
-          marginBottom: "48px"
-        }}>
-          {lessonStructure.units.map((unit) => {
+        {/* Roadmap Path */}
+        {lessonStructure.units.map((unit, unitIndex) => {
             const completedLessons = Array.isArray(progress?.completedLessons) ? progress.completedLessons : [];
             const completedUnitTests = Array.isArray(progress?.completedUnitTests) ? progress.completedUnitTests : [];
-            
-            const unitProgress = completedLessons.filter(lessonId => 
-              unit.lessons.some(lesson => lesson.id === lessonId)
-            ).length || 0;
             const unitCompleted = completedUnitTests.includes(unit.id);
             const isUnlocked = isUnitUnlocked(unit.id);
-            const isActive = currentActiveUnit?.id === unit.id;
-            const hasStartedUnit = unit.lessons.some(lesson =>
-              completedLessons.includes(lesson.id) ||
-              (progress?.lessonAttempts && progress.lessonAttempts[lesson.id]?.attempts > 0)
-            );
 
             return (
+            <div key={unit.id} style={{ marginBottom: "32px" }}>
+              {/* Unit Header Banner */}
               <div
-                key={unit.id}
-                style={{
-                  backgroundColor: marbleLightGray,
-                  borderRadius: "20px",
-                  padding: "24px",
-                  cursor: isUnlocked ? "pointer" : "not-allowed",
-                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                  opacity: isUnlocked ? 1 : 0.5,
-                  filter: isUnlocked ? "none" : "grayscale(100%)",
-                  position: "relative",
-                  userSelect: "none",
-                  WebkitUserSelect: "none",
-                  MozUserSelect: "none",
-                  msUserSelect: "none"
-                }}
                 onClick={() => isUnlocked && handleUnitClick(unit)}
-                onMouseEnter={(e) => {
-                  if (isUnlocked) {
-                    e.target.style.transform = "translateY(-4px)";
-                    e.target.style.boxShadow = "0 8px 25px rgba(0,0,0,0.15)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (isUnlocked) {
-                    e.target.style.transform = "translateY(0)";
-                    e.target.style.boxShadow = "none";
-                  }
-                }}
-              >
-                {/* View Lessons Button */}
-                {isUnlocked && (
-                  <div style={{
-                    position: "absolute",
-                    top: "12px",
-                    right: "12px",
-                    backgroundColor: marbleDarkGray,
-                    color: marbleWhite,
-                    padding: "4px 8px",
-                    borderRadius: "8px",
-                    fontSize: "10px",
-                    fontWeight: "500",
-                    opacity: 0.8
-                  }}>
-                    Click to view lessons
-                  </div>
-                )}
-
-                <div style={{
+                style={{
+                  backgroundColor: unitCompleted ? marbleGold : isUnlocked ? marbleDarkGray : marbleGray,
+                  borderRadius: "16px",
+                  padding: "16px 20px",
+                  marginBottom: "24px",
+                  cursor: isUnlocked ? "pointer" : "not-allowed",
+                  opacity: isUnlocked ? 1 : 0.5,
+                  transition: "all 0.2s ease",
                   display: "flex",
                   alignItems: "center",
-                  marginBottom: "16px"
+                  gap: "12px"
+                }}
+              >
+                <div style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  backgroundColor: unitCompleted ? marbleDarkGray : "rgba(255,255,255,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: marbleWhite
                 }}>
+                  {unitCompleted ? "✓" : unit.id}
+                </div>
+                <div style={{ flex: 1 }}>
                   <div style={{
-                    width: "60px",
+                    fontSize: "16px",
+                    fontWeight: "700",
+                    color: unitCompleted ? marbleDarkGray : marbleWhite,
+                    fontFamily: fontHeading
+                  }}>
+                    Unit {unit.id}: {unit.title}
+                  </div>
+                  <div style={{
+                    fontSize: "12px",
+                    color: unitCompleted ? marbleDarkGray : "rgba(255,255,255,0.7)",
+                    marginTop: "2px"
+                  }}>
+                    {unit.lessons.length} lessons • {unit.unitTest.xp} XP
+                  </div>
+                </div>
+                {isUnlocked && (
+                  <div style={{
+                    fontSize: "20px",
+                    color: unitCompleted ? marbleDarkGray : marbleWhite,
+                    opacity: 0.6
+                  }}>
+                    ›
+                  </div>
+                )}
+              </div>
+
+              {/* Lessons Roadmap */}
+                <div style={{
+                  display: "flex",
+                flexDirection: "column",
+                  alignItems: "center",
+                position: "relative"
+              }}>
+                {unit.lessons.map((lesson, lessonIndex) => {
+                  const lessonCompleted = completedLessons.includes(lesson.id);
+                  const prevLessonIndex = lessonIndex - 1;
+                  const isLocked = !isUnlocked || (lessonIndex > 0 && !completedLessons.includes(unit.lessons[prevLessonIndex].id));
+                  const isNext = isUnlocked && !lessonCompleted && !isLocked;
+                  
+                  // Zigzag offset: alternate left and right
+                  const offset = lessonIndex % 2 === 0 ? -40 : 40;
+                  
+                  return (
+                    <div key={lesson.id} style={{ position: "relative", width: "100%" }}>
+                      {/* Connector line to next node */}
+                      {lessonIndex < unit.lessons.length - 1 && (
+                        <svg
+                          style={{
+                            position: "absolute",
+                            top: "64px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            width: "120px",
                     height: "60px",
+                            zIndex: 0,
+                            overflow: "visible"
+                          }}
+                        >
+                          <path
+                            d={`M ${60 + offset} 0 Q ${60} 30 ${60 + (lessonIndex % 2 === 0 ? 80 : -80)} 60`}
+                            stroke={completedLessons.includes(unit.lessons[lessonIndex + 1]?.id) || (lessonCompleted && !completedLessons.includes(unit.lessons[lessonIndex + 1]?.id) && isUnlocked) ? marbleGold : marbleGray}
+                            strokeWidth="4"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeDasharray={isLocked || !lessonCompleted ? "8 8" : "none"}
+                            opacity={isUnlocked ? 0.6 : 0.3}
+                          />
+                        </svg>
+                      )}
+                      
+                      {/* Lesson Node */}
+                      <div
+                        onClick={() => !isLocked && handleLessonClick(lesson)}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          position: "relative",
+                          zIndex: 1,
+                          transform: `translateX(${offset}px)`,
+                          marginBottom: "40px",
+                          cursor: isLocked ? "not-allowed" : "pointer"
+                        }}
+                      >
+                        {/* Node circle */}
+                        <div style={{
+                          width: "64px",
+                          height: "64px",
                     borderRadius: "50%",
-                    backgroundColor: unitCompleted ? marbleGold :
-                                   isActive ? marbleDarkGray : marbleGray,
+                          backgroundColor: lessonCompleted ? marbleGold :
+                                          isNext ? marbleDarkGray :
+                                          isLocked ? marbleLightGray : marbleDarkGray,
+                          border: isNext ? `4px solid ${marbleGold}` : lessonCompleted ? "4px solid rgba(0,0,0,0.1)" : `4px solid ${marbleGray}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: "24px",
-                    marginRight: "16px"
-                  }}>
-                    {unitCompleted ? "✓" : unit.id}
+                          color: lessonCompleted ? marbleDarkGray : 
+                                isLocked ? marbleGray : marbleWhite,
+                          fontWeight: "bold",
+                          boxShadow: isNext ? `0 0 20px ${marbleGold}60` : "0 4px 12px rgba(0,0,0,0.15)",
+                          transition: "all 0.3s ease",
+                          opacity: isLocked && !isUnlocked ? 0.4 : 1,
+                          animation: isNext ? "pulse 2s infinite" : "none"
+                        }}>
+                          {lessonCompleted ? "✓" : isLocked ? "🔒" : lessonIndex + 1}
                   </div>
-                  <div style={{ flex: 1 }}>
+                        
+                        {/* Lesson title */}
                     <div style={{
-                      fontSize: "20px",
-                      fontWeight: "bold",
-                      color: marbleDarkGray,
-                      marginBottom: "4px",
-                      userSelect: "none",
-                      WebkitUserSelect: "none",
-                      MozUserSelect: "none",
-                      msUserSelect: "none"
-                    }}>
-                      {unit.title}
-                    </div>
+                          marginTop: "8px",
+                          textAlign: "center",
+                          maxWidth: "140px"
+                        }}>
                     <div style={{
-                      fontSize: "14px",
-                      color: marbleGray
-                    }}>
-                      {unit.lessons.length} lessons • {unit.unitTest.xp} XP test
-                    </div>
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            color: isLocked ? marbleGray : marbleDarkGray,
+                            lineHeight: "1.3"
+                          }}>
+                            {lesson.title}
                   </div>
                   <div style={{
-                    backgroundColor: unitCompleted ? marbleGold :
-                                   isActive ? marbleDarkGray : marbleGray,
-                    color: unitCompleted ? marbleDarkGray : marbleWhite,
-                    padding: "4px 12px",
-                    borderRadius: "12px",
-                    fontSize: "12px",
-                    fontWeight: "500"
-                  }}>
-                    {unitCompleted ? "Completed" :
-                     isActive ? "Active" :
-                     isUnlocked ? "Unlocked" : "Locked"}
+                            fontSize: "11px",
+                            color: marbleGray,
+                            marginTop: "2px"
+                          }}>
+                            {lesson.xp} XP • {lesson.coins} 🪙
                   </div>
                 </div>
+                      </div>
+                    </div>
+                  );
+                })}
 
-                <p style={{
-                  fontSize: "16px",
-                  color: marbleGray,
-                  marginBottom: "16px",
-                  lineHeight: "1.5"
-                }}>
-                  {unit.description}
-                </p>
+                {/* Unit Test Node */}
+                {(() => {
+                  const allLessonsCompleted = areAllLessonsCompleted(unit.id);
+                  const canTakeUnitTest = progressManager.canTakeUnitTest(unit.id);
+                  const lastLessonOffset = (unit.lessons.length - 1) % 2 === 0 ? -40 : 40;
+                  const testOffset = unit.lessons.length % 2 === 0 ? -40 : 40;
 
-                {/* Action Button */}
-                {isUnlocked && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (hasStartedUnit) {
-                        handleContinueLesson(unit);
-                      } else {
-                        handleStartUnit(unit);
-                      }
-                    }}
+                  return (
+                    <div style={{ position: "relative", width: "100%" }}>
+                      {/* Connector to unit test */}
+                      <svg
+                        style={{
+                          position: "absolute",
+                          top: "-36px",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          width: "120px",
+                          height: "60px",
+                          zIndex: 0,
+                          overflow: "visible"
+                        }}
+                      >
+                        <path
+                          d={`M ${60 + lastLessonOffset} 0 Q ${60} 30 ${60 + testOffset} 60`}
+                          stroke={unitCompleted ? marbleGold : marbleGray}
+                          strokeWidth="4"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeDasharray={!allLessonsCompleted ? "8 8" : "none"}
+                          opacity={isUnlocked ? 0.6 : 0.3}
+                        />
+                      </svg>
+
+                      <div
+                        onClick={() => allLessonsCompleted && canTakeUnitTest.canTake && handleUnitTest(unit.id)}
                     style={{
-                      backgroundColor: marbleGold,
-                      color: marbleDarkGray,
-                      border: "none",
-                      padding: "12px 24px",
-                      borderRadius: "12px",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      width: "100%"
-                    }}
-                  >
-                    {hasStartedUnit ? "Continue Lesson" : "Start Unit"}
-                  </button>
-                )}
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          position: "relative",
+                          zIndex: 1,
+                          transform: `translateX(${testOffset}px)`,
+                          marginBottom: "24px",
+                          cursor: allLessonsCompleted && canTakeUnitTest.canTake ? "pointer" : "not-allowed"
+                        }}
+                      >
+                        <div style={{
+                          width: "72px",
+                          height: "72px",
+                          borderRadius: "50%",
+                          background: unitCompleted ? `linear-gradient(135deg, ${marbleGold} 0%, #f4d03f 100%)` :
+                                      allLessonsCompleted ? `linear-gradient(135deg, ${marbleDarkGray} 0%, #444 100%)` :
+                                      marbleLightGray,
+                          border: unitCompleted ? "4px solid rgba(0,0,0,0.1)" :
+                                  allLessonsCompleted && canTakeUnitTest.canTake ? `4px solid ${marbleGold}` :
+                                  `4px solid ${marbleGray}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "28px",
+                          color: unitCompleted ? marbleDarkGray : 
+                                 allLessonsCompleted ? marbleWhite : marbleGray,
+                          boxShadow: allLessonsCompleted && canTakeUnitTest.canTake && !unitCompleted ? 
+                                     `0 0 24px ${marbleGold}50` : "0 4px 16px rgba(0,0,0,0.2)",
+                          transition: "all 0.3s ease",
+                          opacity: !allLessonsCompleted ? 0.5 : 1
+                        }}>
+                          {unitCompleted ? "🏆" : allLessonsCompleted ? "📝" : "🔒"}
+                        </div>
+                        <div style={{
+                          marginTop: "8px",
+                          textAlign: "center"
+                        }}>
+                          <div style={{
+                            fontSize: "14px",
+                            fontWeight: "700",
+                            color: allLessonsCompleted ? marbleDarkGray : marbleGray
+                          }}>
+                            Unit Test
+                          </div>
+                          <div style={{
+                            fontSize: "11px",
+                            color: marbleGray,
+                            marginTop: "2px"
+                          }}>
+                            {unit.unitTest.xp} XP • {unit.unitTest.coins} 🪙
+                          </div>
+                        </div>
+                      </div>
               </div>
             );
-          })}
+                })()}
         </div>
+            </div>
+          );
+        })}
 
         {/* Final Test Section */}
         {progress?.unitProgress === 100 && (
           <div style={{
-            backgroundColor: marbleLightGray,
+            backgroundColor: `linear-gradient(135deg, ${marbleDarkGray} 0%, #333 100%)`,
+            background: `linear-gradient(135deg, ${marbleDarkGray} 0%, #333 100%)`,
             borderRadius: "20px",
             padding: "32px",
             textAlign: "center",
-            marginBottom: "48px"
+            marginTop: "24px",
+            border: `3px solid ${marbleGold}`
           }}>
+            <div style={{
+              width: "80px",
+              height: "80px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${marbleGold} 0%, #f4d03f 100%)`,
+              margin: "0 auto 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "36px",
+              boxShadow: `0 0 30px ${marbleGold}50`
+            }}>
+              👑
+            </div>
             <h2 style={{
-              fontSize: "24px",
+              fontSize: "22px",
               fontWeight: "bold",
-              color: marbleDarkGray,
-              marginBottom: "16px"
+              color: marbleWhite,
+              marginBottom: "8px",
+              fontFamily: fontHeading
             }}>
               Final Test
             </h2>
             <p style={{
-              fontSize: "16px",
-              color: marbleGray,
-              marginBottom: "24px"
+              fontSize: "14px",
+              color: "rgba(255,255,255,0.7)",
+              marginBottom: "20px"
             }}>
               {progress.finalTestUnlocked 
-                ? "Complete all units to unlock the final test. You can take it once per day."
-                : "Complete all units to unlock the final test. You can spend coins to unlock it."
+                ? "Prove your mastery! Take it once per day."
+                : "Complete all units to unlock."
               }
             </p>
             <button
@@ -513,23 +640,32 @@ export default function Learn() {
                 backgroundColor: (progressManager.canTakeFinalTest().canTake || progressManager.canTakeFinalTest().needsUnlock) ? marbleGold : marbleGray,
                 color: (progressManager.canTakeFinalTest().canTake || progressManager.canTakeFinalTest().needsUnlock) ? marbleDarkGray : marbleWhite,
                 border: "none",
-                padding: "16px 32px",
+                padding: "14px 28px",
                 borderRadius: "12px",
-                fontSize: "16px",
-                fontWeight: "600",
+                fontSize: "15px",
+                fontWeight: "700",
                 cursor: (progressManager.canTakeFinalTest().canTake || progressManager.canTakeFinalTest().needsUnlock) ? "pointer" : "not-allowed"
               }}
             >
               {progressManager.canTakeFinalTest().canTake
                 ? "Take Final Test"
                 : progressManager.canTakeFinalTest().needsUnlock
-                ? `Unlock Final Test (${progressManager.canTakeFinalTest().unlockCost} coins)`
+                ? `Unlock (${progressManager.canTakeFinalTest().unlockCost} 🪙)`
                 : progressManager.canTakeFinalTest().message
               }
             </button>
           </div>
         )}
       </div>
+
+      {/* CSS Keyframes for pulse animation */}
+      <style>{`
+        @keyframes pulse {
+          0% { box-shadow: 0 0 20px ${marbleGold}60; }
+          50% { box-shadow: 0 0 30px ${marbleGold}90, 0 0 40px ${marbleGold}40; }
+          100% { box-shadow: 0 0 20px ${marbleGold}60; }
+        }
+      `}</style>
 
       {/* Lessons Modal */}
       {showLessonsModal && selectedUnit && (
